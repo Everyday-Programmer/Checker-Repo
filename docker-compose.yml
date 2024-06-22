@@ -1,18 +1,30 @@
-FROM python:3.10-slim
+version: '3.8'
 
-WORKDIR /app
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["uvicorn", "api_main:app", "--host", "0.0.0.0", "--port", "8000"]
+    ports:
+      - "8000:8000"
+    depends_on:
+      - mongodb
 
-# Copy API and updater requirements
-COPY ./api/requirements.txt /app/api-requirements.txt
-COPY ./updater/requirements.txt /app/updater-requirements.txt
+  updater:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["python", "/app/updater_main.py"]
+    depends_on:
+      - mongodb
 
-# Install requirements
-RUN pip install --no-cache-dir -r /app/api-requirements.txt
-RUN pip install --no-cache-dir -r /app/updater-requirements.txt
+  mongodb:
+    image: mongo:4.4
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
 
-# Copy API and updater code
-COPY ./api/main.py /app/api_main.py
-COPY ./updater/main.py /app/updater_main.py
-
-# Expose port for FastAPI
-EXPOSE 8000
+volumes:
+  mongo-data:
