@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Admin Page</title>
+</head>
+<body>
+    <h2>Admin Page</h2>
+    <h3>URL List</h3>
+    <ul>
+        {% for label, url in url_dict.items() %}
+            <li>
+                {{ label }}: {{ url }}
+                <form action="/admin/delete_url" method="post" style="display: inline;">
+                    <input type="hidden" name="label" value="{{ label }}">
+                    <input type="hidden" name="username" value="admin">
+                    <input type="hidden" name="password" value="password">
+                    <input type="submit" value="Delete">
+                </form>
+            </li>
+        {% endfor %}
+    </ul>
+    <h3>Add URL</h3>
+    <form action="/admin/add_url" method="post">
+        <label for="label">Label:</label>
+        <input type="text" id="label" name="label" required><br><br>
+        <label for="url">URL:</label>
+        <input type="url" id="url" name="url" required><br><br>
+        <input type="hidden" name="username" value="admin">
+        <input type="hidden" name="password" value="password">
+        <input type="submit" value="Add URL">
+    </form>
+</body>
+</html>
