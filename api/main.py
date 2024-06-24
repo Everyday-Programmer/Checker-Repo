@@ -61,7 +61,7 @@ async def ip_check(ip: str = Query(..., description="IP address to check")):
     for record in collection.find():
         cidr = record["ip"]
         if is_ip_in_cidr(ip, cidr):
-            return {"exists": True, "source": record["source"], "last_updated": last_updated}
+            return {"exists": True, "ip": ip, "source": record["source"], "last_updated": last_updated}
 
     return {"exists": False, "last_updated": last_updated}
 
