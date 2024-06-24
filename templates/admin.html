@@ -7,16 +7,51 @@
             text-align: center;
             background-color: aliceblue;
         }
+        ul {
+            width: fit-content;
+            margin: auto;
+        }
+        li {
+            text-align: left;
+        }
     </style>
 </head>
 <body>
     <h2>Admin Page</h2>
-    <h3>URL List</h3>
+    <h3>IP URLs List</h3>
     <ul>
-        {% for label, url in url_dict.items() %}
+        {% for label, url in ip_urls.items() %}
             <li>
                 {{ label }}: {{ url }}
-                <form action="/admin/delete_url" method="post" style="display: inline;">
+                <form action="/admin/delete_url?opt=ip" method="post" style="display: inline;">
+                    <input type="hidden" name="label" value="{{ label }}">
+                    <input type="hidden" name="username" value="admin">
+                    <input type="hidden" name="password" value="password">
+                    <input type="submit" value="Delete">
+                </form>
+            </li>
+        {% endfor %}
+    </ul>
+    <h3>Domain URLs List</h3>
+    <ul>
+        {% for label, url in domain_urls.items() %}
+            <li>
+                {{ label }}: {{ url }}
+                <form action="/admin/delete_url?opt=domain" method="post" style="display: inline;">
+                    <input type="hidden" name="label" value="{{ label }}">
+                    <input type="hidden" name="username" value="admin">
+                    <input type="hidden" name="password" value="password">
+                    <input type="submit" value="Delete">
+                </form>
+            </li>
+        {% endfor %}
+    </ul>
+    <h3>URLs List</h3>
+    <ul>
+        {% for label, url in url_urls.items() %}
+            <li>
+                {{ label }}: {{ url }}
+                <form action="/admin/delete_url?opt=url" method="post" style="display: inline;">
                     <input type="hidden" name="label" value="{{ label }}">
                     <input type="hidden" name="username" value="admin">
                     <input type="hidden" name="password" value="password">
@@ -33,7 +68,26 @@
         <input type="url" id="url" name="url" required><br><br>
         <input type="hidden" name="username" value="admin">
         <input type="hidden" name="password" value="password">
+        <label for="addTo">Add to</label><br>
+        <select id="addTo" name="addTo">
+            <option value="IP Address">IP Address</option>
+            <option value="Domain">Domain</option>
+            <option value="URL">URL</option>
+        </select><br><br>
         <input type="submit" value="Add URL">
+    </form>
+    <h3>Upload a Text File</h3>
+    <form method="post" action="/upload" enctype="multipart/form-data">
+        <input type="file" name="file" required><br><br>
+        <label for="source">Source</label>
+        <input type="text" name="source" id="source" required><br><br>
+        <label for="upload_to">Upload to</label><br>
+        <select id="upload_to" name="upload_to">
+            <option value="IP Address">IP Address</option>
+            <option value="Domain">Domain</option>
+            <option value="URL">URL</option>
+        </select><br><br>
+        <input type="submit" value="Upload">
     </form>
 </body>
 </html>
