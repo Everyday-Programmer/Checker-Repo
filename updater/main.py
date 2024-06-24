@@ -1,10 +1,9 @@
-import os
+import threading
+from datetime import datetime
 
-from pymongo import MongoClient, ASCENDING
 import requests
 from apscheduler.schedulers.blocking import BlockingScheduler
-from datetime import datetime
-import threading
+from pymongo import MongoClient, ASCENDING
 
 client = MongoClient("mongodb+srv://hostUser:n73utRfJqmZ5Cvtk@checkercluster.leiqmez.mongodb.net/")
 db = client["checker"]
@@ -41,12 +40,14 @@ def get_url_url_dict():
         url_dict[entry["source"]] = entry["url"]
     return url_dict
 
+
 def read_local_file(file_path):
     try:
         with open(file_path, 'r') as file:
             return file.read().splitlines()
     except Exception:
         return []
+
 
 def fetch_and_store_ips():
     last_updated = datetime.utcnow()
@@ -83,7 +84,7 @@ def fetch_and_store_ips():
             upsert=True
         )
         print(f"IP addresses updated at {last_updated}")
-    cleanup_duplicates()
+        #cleanup_duplicates()
 
 
 def fetch_and_store_domains():
@@ -121,7 +122,7 @@ def fetch_and_store_domains():
             upsert=True
         )
         print(f"Domains updated at {last_updated}")
-    cleanup_duplicate_domains()
+        #cleanup_duplicate_domains()
 
 
 def fetch_and_store_urls():
@@ -159,7 +160,7 @@ def fetch_and_store_urls():
             upsert=True
         )
         print(f"Urls updated at {last_updated}")
-    cleanup_duplicate_urls()
+        #cleanup_duplicate_urls()
 
 
 def listen_for_updates():
@@ -228,7 +229,7 @@ def cleanup_duplicate_domains():
     for duplicate in duplicates:
         docs_to_remove = duplicate["docs"][1:]
         ids_to_remove = [doc["_id"] for doc in docs_to_remove]
-        collection.delete_many({"_id": {"$in": ids_to_remove}})
+        domain_collection.delete_many({"_id": {"$in": ids_to_remove}})
         print(f"Removed {len(ids_to_remove)} duplicate(s) for domains {duplicate['_id']}")
 
 
@@ -247,7 +248,7 @@ def cleanup_duplicate_urls():
     for duplicate in duplicates:
         docs_to_remove = duplicate["docs"][1:]
         ids_to_remove = [doc["_id"] for doc in docs_to_remove]
-        collection.delete_many({"_id": {"$in": ids_to_remove}})
+        url_collection.delete_many({"_id": {"$in": ids_to_remove}})
         print(f"Removed {len(ids_to_remove)} duplicate(s) for urls {duplicate['_id']}")
 
 
