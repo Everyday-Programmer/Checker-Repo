@@ -109,7 +109,7 @@ async def domain_check(domain: str = Query(..., description="Domain to check")):
 @app.get("/urlCheck/")
 async def url_check(url: str = Query(..., description="Url to check")):
     try:
-        result = await url_collection.find_one({"url": {"$regex": f"^{url}.*"}})
+        result = await url_collection.find_one({"url": url})
         last_updated_doc = await meta_collection.find_one({"_id": "last_updated"})
         last_updated = last_updated_doc["timestamp"] if last_updated_doc else "N/A"
         if result:
