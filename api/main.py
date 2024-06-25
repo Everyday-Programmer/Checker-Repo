@@ -14,7 +14,7 @@ templates = Jinja2Templates(directory="templates")
 security = HTTPBasic()
 UPLOAD_FOLDER = 'uploads'
 
-client = MongoClient("mongodb+srv://hostUser:n73utRfJqmZ5Cvtk@checkercluster.leiqmez.mongodb.net/")
+client = MongoClient("mongodb://host.docker.internal:27017/")
 db = client["checker"]
 collection = db["ip_addresses"]
 domain_collection = db["domains"]

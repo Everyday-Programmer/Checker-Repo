@@ -28,13 +28,15 @@ services:
       - mynetwork
 
   mongodb:
-    image: mongo:8.0.0-rc9-jammy
+    image: mongo:latest
     ports:
       - "27017:27017"
     volumes:
+      #- ./mongod.conf:/etc/mongod.conf
       - mongo-data:/data/db
     networks:
       - mynetwork
+    #command: ["mongod", "--config", "/etc/mongod.conf"]
 
 volumes:
   mongo-data:

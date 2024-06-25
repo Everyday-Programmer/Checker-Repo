@@ -4,8 +4,9 @@ from datetime import datetime
 import requests
 from apscheduler.schedulers.blocking import BlockingScheduler
 from pymongo import MongoClient, ASCENDING
+from pymongo.errors import ServerSelectionTimeoutError, OperationFailure
 
-client = MongoClient("mongodb+srv://hostUser:n73utRfJqmZ5Cvtk@checkercluster.leiqmez.mongodb.net/")
+client = MongoClient("mongodb://host.docker.internal:27017/")
 db = client["checker"]
 collection = db["ip_addresses"]
 domain_collection = db["domains"]
@@ -14,9 +15,9 @@ meta_collection = db["metadata"]
 ip_url_collection = db["ip_urls"]
 domain_url_collection = db["domain_urls"]
 url_url_collection = db["url_urls"]
-collection.create_index([("ip", ASCENDING)], unique=True)
-domain_collection.create_index([("domain", ASCENDING)], unique=True)
-url_collection.create_index([("url", ASCENDING)], unique=True)
+#collection.create_index([("ip", ASCENDING)], unique=True)
+#domain_collection.create_index([("domain", ASCENDING)], unique=True)
+#url_collection.create_index([("url", ASCENDING)], unique=True)
 
 
 def get_url_dict():
@@ -257,8 +258,27 @@ scheduler.add_job(fetch_and_store_ips, 'interval', hours=2)
 scheduler.add_job(fetch_and_store_domains, 'interval', hours=2)
 scheduler.add_job(fetch_and_store_urls, 'interval', hours=2)
 
+
+# Ensure replica set is initiated
+def ensure_replica_set_initiated():
+    global sync_client
+    try:
+        sync_client = MongoClient("mongodb://host.docker.internal:27017/")
+        # Attempt to check the replica set status
+        rs_status = client.admin.command("replSetGetStatus")
+        print("Replica set already initiated")
+    except OperationFailure as e:
+        if e.details.get('code') == 94:
+            print("Initiating replica set")
+            sync_client.admin.command("replSetInitiate")
+        else:
+            raise e
+    except ServerSelectionTimeoutError:
+        print("Could not connect to MongoDB server. Ensure MongoDB is running.")
+
 if __name__ == "__main__":
-    threading.Thread(target=listen_for_updates, daemon=True).start()
+    #ensure_replica_set_initiated()
+    #threading.Thread(target=listen_for_updates, daemon=True).start()
     fetch_and_store_ips()
     fetch_and_store_domains()
     fetch_and_store_urls()
