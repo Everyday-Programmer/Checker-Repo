@@ -28,7 +28,7 @@ services:
       - mynetwork
 
   mongodb:
-    image: mongo:4.4
+    image: mongo:8.0.0-rc9-jammy
     ports:
       - "27017:27017"
     volumes:
