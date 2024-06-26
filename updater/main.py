@@ -5,6 +5,7 @@ import requests
 from apscheduler.schedulers.blocking import BlockingScheduler
 from pymongo import MongoClient, ASCENDING
 from pymongo.errors import ServerSelectionTimeoutError, OperationFailure
+import asyncio
 
 client = MongoClient("mongodb://host.docker.internal:27017/")
 db = client["checker"]
@@ -15,6 +16,8 @@ meta_collection = db["metadata"]
 ip_url_collection = db["ip_urls"]
 domain_url_collection = db["domain_urls"]
 url_url_collection = db["url_urls"]
+
+
 #collection.create_index([("ip", ASCENDING)], unique=True)
 #domain_collection.create_index([("domain", ASCENDING)], unique=True)
 #url_collection.create_index([("url", ASCENDING)], unique=True)
@@ -165,6 +168,29 @@ def fetch_and_store_urls():
 
 
 def listen_for_updates():
+    previous_ips = get_url_dict()
+    previous_domains = get_domain_url_dict()
+    previous_urls = get_url_url_dict()
+
+    while True:
+        current_ips = get_url_dict()
+        current_domains = get_domain_url_dict()
+        current_urls = get_url_url_dict()
+
+        if previous_ips != current_ips:
+            fetch_and_store_ips()
+            previous_ips = current_ips
+
+        if previous_domains != current_domains:
+            fetch_and_store_domains()
+            previous_domains = current_domains
+
+        if previous_urls != current_urls:
+            fetch_and_store_urls()
+            previous_urls = current_urls
+
+
+"""def listen_for_updates():
     pipeline = [{"$match": {"operationType": {"$in": ["insert", "delete"]}}}]
     with ip_url_collection.watch(pipeline, full_document='updateLookup') as stream:
         for change in stream:
@@ -193,7 +219,7 @@ def listen_for_updates():
                 # if change["fullDocument"]["label"] == "trigger":
                 # url_collection.delete_one({"_id": change["fullDocument"]["_id"]})
             except KeyError:
-                continue
+                continue"""
 
 
 def cleanup_duplicates():
@@ -257,9 +283,9 @@ scheduler = BlockingScheduler()
 scheduler.add_job(fetch_and_store_ips, 'interval', hours=2)
 scheduler.add_job(fetch_and_store_domains, 'interval', hours=2)
 scheduler.add_job(fetch_and_store_urls, 'interval', hours=2)
+# scheduler.add_job(listen_for_updates, 'interval', minutes=1)
 
 
-# Ensure replica set is initiated
 def ensure_replica_set_initiated():
     global sync_client
     try:
@@ -276,9 +302,10 @@ def ensure_replica_set_initiated():
     except ServerSelectionTimeoutError:
         print("Could not connect to MongoDB server. Ensure MongoDB is running.")
 
+
 if __name__ == "__main__":
-    #ensure_replica_set_initiated()
-    #threading.Thread(target=listen_for_updates, daemon=True).start()
+    # ensure_replica_set_initiated()
+    threading.Thread(target=listen_for_updates, daemon=True).start()
     fetch_and_store_ips()
     fetch_and_store_domains()
     fetch_and_store_urls()

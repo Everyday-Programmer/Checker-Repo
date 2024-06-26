@@ -36,7 +36,7 @@ services:
       - mongo-data:/data/db
     networks:
       - mynetwork
-    #command: ["mongod", "--config", "/etc/mongod.conf"]
+    #command: [ "mongod", "--replSet", "rs0", "--bind_ip_all" ]
 
 volumes:
   mongo-data:
