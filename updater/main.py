@@ -138,8 +138,8 @@ def fetch_and_store_urls():
 
     for label, url in url_dict.items():
         try:
-            if 'localhost' in url or '127.0.0.1' in url:
-                file_path = url.replace('http://localhost', '').replace('http://127.0.0.1:8000', '')
+            if 'localhost' in url or '127.0.0.1' in url or '156.67.80.79' in url:
+                file_path = url.replace('http://localhost', '').replace('http://127.0.0.1:8000', '').replace('http://156.67.80.79:8000', '')
                 if file_path.startswith('/'):
                     file_path = file_path[1:]
                 url_list = read_local_file(file_path)
