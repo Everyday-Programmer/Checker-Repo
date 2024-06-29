@@ -3,3 +3,5 @@ uvicorn
 pymongo
 requests
 apscheduler
+ioc_finder
+tld

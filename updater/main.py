@@ -1,15 +1,24 @@
-import threading
+import ipaddress
 import logging
+import os
+import re
+import threading
 from datetime import datetime
+from urllib.parse import urlparse
+
 import requests
 from apscheduler.schedulers.blocking import BlockingScheduler
-from pymongo import MongoClient, ASCENDING
+from dotenv import load_dotenv
+from pymongo import MongoClient
 from pymongo.errors import ServerSelectionTimeoutError, OperationFailure
-import asyncio
+from tld import get_tld
+from tld.exceptions import TldDomainNotFound
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-client = MongoClient("mongodb://host.docker.internal:27017/")
+load_dotenv()
+
+client = MongoClient(os.getenv('MONGO_DB'))
 db = client["checker"]
 collection = db["ip_addresses"]
 domain_collection = db["domains"]
@@ -18,6 +27,7 @@ meta_collection = db["metadata"]
 ip_url_collection = db["ip_urls"]
 domain_url_collection = db["domain_urls"]
 url_url_collection = db["url_urls"]
+
 
 # collection.create_index([("ip", ASCENDING)], unique=True)
 # domain_collection.create_index([("domain", ASCENDING)], unique=True)
@@ -30,17 +40,20 @@ def get_url_dict():
             url_dict[entry["source"]] = entry["url"]
     return url_dict
 
+
 def get_domain_url_dict():
     url_dict = {}
     for entry in domain_url_collection.find():
         url_dict[entry["source"]] = entry["url"]
     return url_dict
 
+
 def get_url_url_dict():
     url_dict = {}
     for entry in url_url_collection.find():
         url_dict[entry["source"]] = entry["url"]
     return url_dict
+
 
 def read_local_file(file_path):
     try:
@@ -49,6 +62,17 @@ def read_local_file(file_path):
     except Exception as e:
         logging.error(f"Failed to read local file {file_path}: {e}")
         return []
+
+
+def extract_ips_from_text(text):
+    # Regex to find IPv4 and IPv6 addresses
+    ip_pattern = r'\b(?:\d{1,3}\.){3}\d{1,3}\b|\b(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}\b'
+
+    # Find all occurrences of IPs in the text
+    ips = re.findall(ip_pattern, text)
+
+    return ips
+
 
 def fetch_and_store_ips():
     last_updated = datetime.utcnow()
@@ -59,7 +83,8 @@ def fetch_and_store_ips():
     for label, url in url_dict.items():
         try:
             if 'localhost' in url or '127.0.0.1' in url or '156.67.80.79' in url:
-                file_path = url.replace('http://localhost:8000', '').replace('http://127.0.0.1:8000', '').replace('http://156.67.80.79:8000', '')
+                file_path = url.replace('http://localhost:8000', '').replace('http://127.0.0.1:8000', '').replace(
+                    'http://156.67.80.79:8000', '')
                 if file_path.startswith('/'):
                     file_path = file_path[1:]
                 ip_list = read_local_file(file_path)
@@ -68,10 +93,19 @@ def fetch_and_store_ips():
                 response.raise_for_status()
                 ip_list = response.text.splitlines()
 
-            for ip in ip_list:
-                if ip not in seen_ips:
-                    new_ips.append({"ip": ip, "source": label})
-                    seen_ips.add(ip)
+            for line in ip_list:
+                ips_in_line = extract_ips_from_text(line)
+
+                for ip in ips_in_line:
+                    try:
+                        ip_obj = ipaddress.ip_address(ip)
+                        if ip_obj.is_global and ip not in seen_ips:
+                            new_ips.append({"ip": ip, "source": label})
+                            seen_ips.add(ip)
+                        elif ip in seen_ips:
+                            logging.info(f"Duplicate IP {ip} removed from {url}")
+                    except ValueError:
+                        logging.warning(f"Invalid IP address {ip} extracted from {url}")
         except requests.RequestException as e:
             logging.error(f"Failed to fetch IPs from {url}: {e}")
 
@@ -86,6 +120,15 @@ def fetch_and_store_ips():
         logging.info(f"IP addresses updated at {last_updated}")
         # cleanup_duplicates()
 
+
+def extract_domains_from_text(text):
+    domain_pattern = r'\b(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}\b'
+
+    domains = re.findall(domain_pattern, text)
+
+    return domains
+
+
 def fetch_and_store_domains():
     last_updated = datetime.utcnow()
     new_domains = []
@@ -95,7 +138,8 @@ def fetch_and_store_domains():
     for label, url in url_dict.items():
         try:
             if 'localhost' in url or '127.0.0.1' in url or '156.67.80.79' in url:
-                file_path = url.replace('http://localhost:8000', '').replace('http://127.0.0.1:8000', '').replace('http://156.67.80.79:8000', '')
+                file_path = url.replace('http://localhost:8000', '').replace('http://127.0.0.1:8000', '').replace(
+                    'http://156.67.80.79:8000', '')
                 if file_path.startswith('/'):
                     file_path = file_path[1:]
                 domain_list = read_local_file(file_path)
@@ -104,10 +148,15 @@ def fetch_and_store_domains():
                 response.raise_for_status()
                 domain_list = response.text.splitlines()
 
-            for domain in domain_list:
-                if domain not in seen_domains:
-                    new_domains.append({"domain": domain, "source": label})
-                    seen_domains.add(domain)
+            for line in domain_list:
+                domains_in_line = extract_domains_from_text(line)
+
+                for domain in domains_in_line:
+                    if domain not in seen_domains:
+                        new_domains.append({"domain": domain, "source": label})
+                        seen_domains.add(domain)
+                    elif domain in seen_domains:
+                        logging.info(f"Duplicate domain {domain} removed from {url}")
         except requests.RequestException as e:
             logging.error(f"Failed to fetch domains from {url}: {e}")
 
@@ -122,6 +171,15 @@ def fetch_and_store_domains():
         logging.info(f"Domains updated at {last_updated}")
         # cleanup_duplicate_domains()
 
+
+def extract_urls_from_text(text):
+    url_pattern = r'\b(?:https?|ftp):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|]'
+
+    urls = re.findall(url_pattern, text, re.IGNORECASE)
+
+    return urls
+
+
 def fetch_and_store_urls():
     last_updated = datetime.utcnow()
     new_urls = []
@@ -131,7 +189,8 @@ def fetch_and_store_urls():
     for label, url in url_dict.items():
         try:
             if 'localhost' in url or '127.0.0.1' in url or '156.67.80.79' in url:
-                file_path = url.replace('http://localhost:8000', '').replace('http://127.0.0.1:8000', '').replace('http://156.67.80.79:8000', '')
+                file_path = url.replace('http://localhost:8000', '').replace('http://127.0.0.1:8000', '').replace(
+                    'http://156.67.80.79:8000', '')
                 if file_path.startswith('/'):
                     file_path = file_path[1:]
                 url_list = read_local_file(file_path)
@@ -140,10 +199,19 @@ def fetch_and_store_urls():
                 response.raise_for_status()
                 url_list = response.text.splitlines()
 
-            for url1 in url_list:
-                if url1 not in seen_urls:
-                    new_urls.append({"url": url1, "source": label})
-                    seen_urls.add(url1)
+            for line in url_list:
+                # Extract URLs from each line of text
+                urls_in_line = extract_urls_from_text(line)
+
+                for url in urls_in_line:
+                    try:
+                        parsed_url = urlparse(url)
+                        # Check if scheme and netloc are present
+                        if parsed_url.scheme and parsed_url.netloc and url not in seen_urls:
+                            new_urls.append({"url": url, "source": label})
+                            seen_urls.add(url)
+                    except Exception as e:
+                        logging.warning(f"Invalid URL {url} extracted from {url}: {e}")
         except requests.RequestException as e:
             logging.error(f"Failed to fetch URLs from {url}: {e}")
 
@@ -157,6 +225,7 @@ def fetch_and_store_urls():
         )
         logging.info(f"URLs updated at {last_updated}")
         # cleanup_duplicate_urls()
+
 
 def listen_for_updates():
     previous_ips = get_url_dict()
@@ -180,6 +249,7 @@ def listen_for_updates():
             fetch_and_store_urls()
             previous_urls = current_urls
 
+
 def cleanup_duplicates():
     pipeline = [
         {"$group": {
@@ -197,6 +267,7 @@ def cleanup_duplicates():
         ids_to_remove = [doc["_id"] for doc in docs_to_remove]
         collection.delete_many({"_id": {"$in": ids_to_remove}})
         logging.info(f"Removed {len(ids_to_remove)} duplicate(s) for IP {duplicate['_id']}")
+
 
 def cleanup_duplicate_domains():
     pipeline = [
@@ -216,6 +287,7 @@ def cleanup_duplicate_domains():
         domain_collection.delete_many({"_id": {"$in": ids_to_remove}})
         logging.info(f"Removed {len(ids_to_remove)} duplicate(s) for domain {duplicate['_id']}")
 
+
 def cleanup_duplicate_urls():
     pipeline = [
         {"$group": {
@@ -234,10 +306,13 @@ def cleanup_duplicate_urls():
         url_collection.delete_many({"_id": {"$in": ids_to_remove}})
         logging.info(f"Removed {len(ids_to_remove)} duplicate(s) for URL {duplicate['_id']}")
 
+
 scheduler = BlockingScheduler()
 scheduler.add_job(fetch_and_store_ips, 'interval', hours=2)
 scheduler.add_job(fetch_and_store_domains, 'interval', hours=2)
 scheduler.add_job(fetch_and_store_urls, 'interval', hours=2)
+
+
 # scheduler.add_job(listen_for_updates, 'interval', minutes=1)
 
 def ensure_replica_set_initiated():
@@ -255,6 +330,7 @@ def ensure_replica_set_initiated():
             raise e
     except ServerSelectionTimeoutError:
         logging.error("Could not connect to MongoDB server. Ensure MongoDB is running.")
+
 
 if __name__ == "__main__":
     # ensure_replica_set_initiated()
