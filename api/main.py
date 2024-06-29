@@ -1,4 +1,5 @@
 import ipaddress
+from dotenv import load_dotenv
 import os
 
 from fastapi import FastAPI, Request, Form, HTTPException, Depends, Query, File, UploadFile
@@ -9,12 +10,14 @@ from fastapi.templating import Jinja2Templates
 from pymongo import MongoClient
 from starlette.status import HTTP_401_UNAUTHORIZED
 
+load_dotenv()
+
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
 security = HTTPBasic()
 UPLOAD_FOLDER = 'uploads'
 
-client = MongoClient("mongodb://host.docker.internal:27017/")
+client = MongoClient(os.getenv('MONGO_DB'))
 db = client["checker"]
 collection = db["ip_addresses"]
 domain_collection = db["domains"]
@@ -142,9 +145,15 @@ async def login(request: Request, username: str = Form(...), password: str = For
 
 @app.post("/admin/add_url", response_class=HTMLResponse)
 async def add_url(request: Request, label: str = Form(...), url: str = Form(...),
-                  credentials: HTTPBasicCredentials = Depends(security)):
+                  credentials: HTTPBasicCredentials = Depends(security), add_to: str = Form(...)):
     authenticate(credentials)
-    ip_url_collection.insert_one({"source": label, "url": url})
+
+    if add_to == "IP Address":
+        ip_url_collection.insert_one({"source": label, "url": url})
+    elif add_to == "Domain":
+        domain_url_collection.insert_one({"source": label, "url": url})
+    elif add_to == "URL":
+        url_urls_collection.insert_one({"source": label, "url": url})
     return RedirectResponse(url="/admin", status_code=302)
 
 
