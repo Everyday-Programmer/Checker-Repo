@@ -1,93 +1,367 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Page</title>
     <style>
         body {
+            font-family: sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            min-height: 100vh;
+            flex-direction: column;
+            background-color: #1e1f22;
+            color: #f0f0f0;
+        }
+        header {
+            padding: 20px;
+            display: flex;
+            height: 20px;
+            justify-content: space-between;
+            align-items: center;
+        }
+        header h1 {
+            margin: 0;
+        }
+        header a {
+            color: #000;
+            text-decoration: none;
+        }
+        .top-nav {
+            display: flex;
+            align-items: center;
+        }
+        .top-nav a + a {
+            margin-left: 20px;
+        }
+        .main {
+            flex: 1;
+            display: grid;
+            grid-template-columns: .5fr 2fr;
+            grid-gap: 20px;
+        }
+        .aside {
+            padding: 20px;
+        }
+        .aside h2 {
+            margin-top: 0;
+        }
+        .aside ul {
+            margin-top: 20px;
+            padding: 0;
+            list-style: none;
+        }
+        .aside li {
+            margin-bottom: 10px;
+        }
+        .aside dl {
+            width: 100%;
+        }
+        .aside li a, .aside dl a {
+            color: #f0f0f0;
+            text-decoration: none;
+        }
+        .content {
+            background-color: #fff;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+        .content h2 {
+            margin-top: 0;
+        }
+        .content .stats {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .content .stats .period {
+            display: flex;
+            align-items: center;
+        }
+        .content .stats .period button {
+            background-color: transparent;
+            border: none;
+            color: inherit;
+            margin-left: 10px;
+            cursor: pointer;
+        }
+        .content .ratings {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 20px;
+        }
+        .content .ratings .rating {
             text-align: center;
-            background-color: aliceblue;
         }
-        ul {
-            width: fit-content;
-            margin: auto;
+        .content .ratings .rating h3 {
+            margin-top: 0;
         }
-        li {
-            text-align: left;
+        main div aside dl dd ul li p.active {
+            color: #1e69e1;
+            text-decoration: none;
+        }
+        #IPList li {
+            background-color: #1e69e1;
+            list-style-type: none;
+            border-radius: 16px;
+            padding: 1px;
+            margin: 10px;
+        }
+        #DomainList li {
+            background-color: #1e69e1;
+            list-style-type: none;
+            border-radius: 16px;
+            padding: 1px;
+            margin: 10px;
+        }
+        #UrlList li {
+            background-color: #1e69e1;
+            list-style-type: none;
+            border-radius: 16px;
+            padding: 1px;
+            margin: 10px;
+        }
+        #IPList h3 {
+            margin-top: 10px;
+            margin-bottom: 6px;
+            margin-left: 10px;
+            margin-right: 10px;
+        }
+        #IPList form {
+            margin-left: 10px;
+            margin-bottom: 6px;
+        }
+        #IPList h5 {
+            margin: 0px;
+            margin-left: 10px;
+            margin-bottom: 6px;
+        }
+        #IPList form input[type=submit] {
+            padding:5px 15px; 
+            background:#fa4646; 
+            border:0 none;
+            cursor:pointer;
+            -webkit-border-radius: 5px;
+            border-radius: 5px; 
+            color: #f0f0f0;
+            font-size: 14px;
+            font-family: sans-serif;
+            font-weight: bold;
+        }
+        #IPList form input[type=submit]:hover {
+            background:#f0f0f0;
+            cursor:pointer;
+            color: #fa4646;
+        }
+        #DomainList h3 {
+            margin-top: 10px;
+            margin-bottom: 6px;
+            margin-left: 10px;
+            margin-right: 10px;
+        }
+        #DomainList form {
+            margin-left: 10px;
+            margin-bottom: 6px;
+        }
+        #DomainList h5 {
+            margin: 0px;
+            margin-left: 10px;
+            margin-bottom: 6px;
+        }
+        #DomainList form input[type=submit] {
+            padding:5px 15px; 
+            background:#fa4646; 
+            border:0 none;
+            cursor:pointer;
+            -webkit-border-radius: 5px;
+            border-radius: 5px; 
+            color: #f0f0f0;
+            font-size: 14px;
+            font-family: sans-serif;
+            font-weight: bold;
+        }
+        #DomainList form input[type=submit]:hover {
+            background:#f0f0f0;
+            cursor:pointer;
+            color: #fa4646;
+        }
+        #UrlList h3 {
+            margin-top: 10px;
+            margin-bottom: 6px;
+            margin-left: 10px;
+            margin-right: 10px;
+        }
+        #UrlList h5 {
+            margin: 0px;
+            margin-left: 10px;
+            margin-bottom: 6px;
+        }
+        #UrlList form {
+            margin-left: 10px;
+            margin-bottom: 6px;
+        }
+        #UrlList form input[type=submit] {
+            padding:5px 15px; 
+            background:#fa4646; 
+            border:0 none;
+            cursor:pointer;
+            -webkit-border-radius: 5px;
+            border-radius: 5px; 
+            color: #f0f0f0;
+            font-size: 14px;
+            font-family: sans-serif;
+            font-weight: bold;
+        }
+        #UrlList form input[type=submit]:hover {
+            background:#f0f0f0;
+            cursor:pointer;
+            color: #fa4646;
         }
     </style>
 </head>
 <body>
-    <h2>Admin Page</h2>
-    <h3>IP URLs List</h3>
-    <ul>
-        {% for label, url in ip_urls.items() %}
-            <li>
-                {{ label }}: {{ url }}
-                <form action="/admin/delete_url?opt=ip" method="post" style="display: inline;">
-                    <input type="hidden" name="label" value="{{ label }}">
-                    <input type="hidden" name="username" value="admin">
-                    <input type="hidden" name="password" value="password">
-                    <input type="submit" value="Delete">
-                </form>
-            </li>
-        {% endfor %}
-    </ul>
-    <h3>Domain URLs List</h3>
-    <ul>
-        {% for label, url in domain_urls.items() %}
-            <li>
-                {{ label }}: {{ url }}
-                <form action="/admin/delete_url?opt=domain" method="post" style="display: inline;">
-                    <input type="hidden" name="label" value="{{ label }}">
-                    <input type="hidden" name="username" value="admin">
-                    <input type="hidden" name="password" value="password">
-                    <input type="submit" value="Delete">
-                </form>
-            </li>
-        {% endfor %}
-    </ul>
-    <h3>URLs List</h3>
-    <ul>
-        {% for label, url in url_urls.items() %}
-            <li>
-                {{ label }}: {{ url }}
-                <form action="/admin/delete_url?opt=url" method="post" style="display: inline;">
-                    <input type="hidden" name="label" value="{{ label }}">
-                    <input type="hidden" name="username" value="admin">
-                    <input type="hidden" name="password" value="password">
-                    <input type="submit" value="Delete">
-                </form>
-            </li>
-        {% endfor %}
-    </ul>
-    <h3>Add URL</h3>
-    <form action="/admin/add_url" method="post">
-        <label for="label">Label:</label>
-        <input type="text" id="label" name="label" required><br><br>
-        <label for="url">URL:</label>
-        <input type="url" id="url" name="url" required><br><br>
-        <input type="hidden" name="username" value="admin">
-        <input type="hidden" name="password" value="password">
-        <label for="addTo">Add to</label><br>
-        <select id="addTo" name="addTo">
-            <option value="IP Address">IP Address</option>
-            <option value="Domain">Domain</option>
-            <option value="URL">URL</option>
-        </select><br><br>
-        <input type="submit" value="Add URL">
-    </form>
-    <h3>Upload a Text File</h3>
-    <form method="post" action="/upload" enctype="multipart/form-data">
-        <input type="file" name="file" required><br><br>
-        <label for="source">Source</label>
-        <input type="text" name="source" id="source" required><br><br>
-        <label for="upload_to">Upload to</label><br>
-        <select id="upload_to" name="upload_to">
-            <option value="IP Address">IP Address</option>
-            <option value="Domain">Domain</option>
-            <option value="URL">URL</option>
-        </select><br><br>
-        <input type="submit" value="Upload">
-    </form>
-</body>
+    <main class="main">
+        <div style="width: 100%; background-color: #2b2d30; border: 0 solid #ccc; border-bottom-right-radius: 20px; border-top-right-radius: 20px; ">
+            <aside class="aside" style="height: 90vh; width: max-content; position: fixed; z-index: 1">
+                <h2 style="color: #1e69e1;">Navigation</h2>
+                <dl>
+                    <dt><a href="#">Dashboard</a></dt>
+                    <dd style="width: 100%;">
+                        <ul>
+                            <li><p style="cursor: pointer;" class="active" id="showIPList">IP List</p></li>
+                            <li><p style="cursor: pointer;" id="showDomainList">Domain List</p></li>
+                            <li><p style="cursor: pointer;" id="showUrlList">Urls List</p></li>
+                        </ul>
+                    </dd>
+                </dl>
+            </aside>
+        </div>
+        <div style="display: grid; grid-template-columns: 2fr 1fr; grid-gap: 20px; flex: 1">
+            <div>
+                <header>
+                    <h1>Checker</h1>
+                </header>
+                <div id="IPList">
+                    <h3 style="width: 100%; text-align: center;">IP URLs List</h3>
+                    <ul>
+                        {% for label, url in ip_urls.items() %}
+                        <li>
+                            <h3>{{ label }}</h3><h5>{{ url }}</h5>
+                                <form action="/admin/delete_url?opt=ip" method="post" style="display: inline-block;">
+                                    <input type="hidden" name="label" value="{{ label }}">
+                                    <input type="hidden" name="username" value="admin">
+                                    <input type="hidden" name="password" value="password">
+                                    <input style="cursor: pointer;" type="submit" value="Delete">
+                                </form>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                <div id="DomainList" style="display: none;">
+                    <h3 style="width: 100%; text-align: center;">Domain URLs List</h3>
+                    <ul>
+                        {% for label, url in domain_urls.items() %}
+                        <li>
+                            <h3>{{ label }}</h3><h5>{{ url }}</h5>
+                            <form action="/admin/delete_url?opt=domain" method="post" style="display: inline-block;">
+                                <input type="hidden" name="label" value="{{ label }}">
+                                <input type="hidden" name="username" value="admin">
+                                <input type="hidden" name="password" value="password">
+                                <input style="cursor: pointer;" type="submit" value="Delete">
+                            </form>
+                        </li>
+                    {% endfor %}
+                    </ul>
+                </div>
+                <div id="UrlList" style="display: none;">
+                    <h3 style="width: 100%; text-align: center;">URLs List</h3>
+                    <ul>
+                        {% for label, url in url_urls.items() %}
+                        <li>
+                            <h3>{{ label }}</h3><h5>{{ url }}</h5>
+                            <form action="/admin/delete_url?opt=url" method="post" style="display: inline-block;">
+                                <input type="hidden" name="label" value="{{ label }}">
+                                <input type="hidden" name="username" value="admin">
+                                <input type="hidden" name="password" value="password">
+                                <input style="cursor: pointer;" type="submit" value="Delete">
+                            </form>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+            <div>
+                <aside class="aside" style="height: 80vh">
+                    <h2>Add new data source to database</h2>
+                    <h4>Add URL</h4>
+                    <form action="/admin/add_url" method="post">
+                        <label for="label">Label:</label>
+                        <input type="text" id="label" name="label" required><br><br>
+                        <label for="url">URL:</label>
+                        <input type="url" id="url" name="url" required><br><br>
+                        <input type="hidden" name="username" value="admin">
+                        <input type="hidden" name="password" value="password">
+                        <label for="add_to">Add to</label><br>
+                        <select id="add_to" name="add_to">
+                            <option value="IP Address">IP Address</option>
+                            <option value="Domain">Domain</option>
+                            <option value="URL">URL</option>
+                        </select><br><br>
+                        <input type="submit" value="Add URL">
+                    </form>
+                    <br>
+                    <hr>
+                    <h3>Upload a Text File</h3>
+                    <form method="post" action="/upload" enctype="multipart/form-data">
+                        <input type="file" name="file" required><br><br>
+                        <label for="source">Source</label>
+                        <input type="text" name="source" id="source" required><br><br>
+                        <label for="upload_to">Upload to</label><br>
+                        <select id="upload_to" name="upload_to">
+                            <option value="IP Address">IP Address</option>
+                            <option value="Domain">Domain</option>
+                            <option value="URL">URL</option>
+                        </select><br><br>
+                        <input type="submit" value="Upload">
+                    </form>
+                </aside>
+            </div>
+            </div>
+        </main>
+        <script>
+            document.getElementById("showIPList").onclick = function() {
+                document.getElementById("IPList").style.display = "block";
+                document.getElementById("DomainList").style.display = "none";
+                document.getElementById("UrlList").style.display = "none";
+                document.getElementById("showIPList").classList.add("active");
+                document.getElementById("showDomainList").classList.remove("active");
+                document.getElementById("showUrlList").classList.remove("active");
+            }
+
+            document.getElementById("showDomainList").onclick = function() {
+                document.getElementById("DomainList").style.display = "block";
+                document.getElementById("IPList").style.display = "none";
+                document.getElementById("UrlList").style.display = "none";
+                document.getElementById("showDomainList").classList.add("active");
+                document.getElementById("showIPList").classList.remove("active");
+                document.getElementById("showUrlList").classList.remove("active");
+            }
+
+            document.getElementById("showUrlList").onclick = function() {
+                document.getElementById("UrlList").style.display = "block";
+                document.getElementById("IPList").style.display = "none";
+                document.getElementById("DomainList").style.display = "none";
+                document.getElementById("showUrlList").classList.add("active");
+                document.getElementById("showIPList").classList.remove("active");
+                document.getElementById("showDomainList").classList.remove("active");
+            }
+        </script>
+    </body>
 </html>
