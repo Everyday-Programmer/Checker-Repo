@@ -1,6 +1,8 @@
 import ipaddress
 from dotenv import load_dotenv
 import os
+from datetime import datetime
+import pytz
 
 from fastapi import FastAPI, Request, Form, HTTPException, Depends, Query, File, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse
@@ -127,9 +129,12 @@ async def admin_page(request: Request):
     ip_url_dict = get_url_dict()
     domain_url_dict = get_domain_url_dict()
     url_url_dict = get_url_url_dict()
+    last_updated_doc = meta_collection.find_one({"_id": "last_updated"})
+    last_updated = last_updated_doc["timestamp"] if last_updated_doc else None
+
     return templates.TemplateResponse("admin.html",
                                       {"request": request, "ip_urls": ip_url_dict, "domain_urls": domain_url_dict,
-                                       "url_urls": url_url_dict})
+                                       "url_urls": url_url_dict, "last_updated": last_updated})
 
 
 @app.get("/login", response_class=HTMLResponse)
@@ -155,7 +160,7 @@ async def add_url(request: Request, label: str = Form(...), url: str = Form(...)
         domain_url_collection.insert_one({"source": label, "url": url})
     elif add_to == "URL":
         url_urls_collection.insert_one({"source": label, "url": url})
-    return RedirectResponse(url="/admin", status_code=302)
+    return RedirectResponse(url="/admin?s=success", status_code=302)
 
 
 @app.post("/admin/delete_url", response_class=HTMLResponse)

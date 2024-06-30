@@ -289,6 +289,7 @@
             <div>
                 <header>
                     <h1>Checker</h1>
+                    <h5 style="font-family: Calibri,sans-serif;">Last updated: {{ last_updated }}</h5>
                 </header>
                 <div id="IPList">
                     <h3 style="width: 100%; text-align: center;">IP URLs List</h3>
@@ -373,11 +374,21 @@
                         </select><br><br>
                         <input type="submit" value="Upload">
                     </form>
+                    <p style="color: chartreuse; text-align: center;" id="successText">Added successfully!</p>
                 </aside>
             </div>
             </div>
         </main>
         <script>
+            const url = new URL(window.location.href);
+            const params = new URLSearchParams(url.search);
+            const s = params.get('s');
+
+            if (s === "success") {
+                document.getElementById("successText").style.display = "block";
+            } else {
+                document.getElementById("successText").style.display = "none";
+            }
             document.getElementById("showIPList").onclick = function() {
                 document.getElementById("IPList").style.display = "block";
                 document.getElementById("DomainList").style.display = "none";
