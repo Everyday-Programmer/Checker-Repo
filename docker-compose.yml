@@ -12,6 +12,8 @@ services:
       - ./uploads:/app/uploads
     depends_on:
       - mongodb
+    env_file:
+      - .env
     networks:
       - mynetwork
 
@@ -24,6 +26,8 @@ services:
       - mongodb
     volumes:
       - ./uploads:/app/uploads
+    env_file:
+      - .env
     networks:
       - mynetwork
 
