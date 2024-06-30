@@ -362,6 +362,15 @@
                 document.getElementById("showIPList").classList.remove("active");
                 document.getElementById("showDomainList").classList.remove("active");
             }
+
+            document.addEventListener('DOMContentLoaded', () => {
+                const storedUsername = localStorage.getItem('username');
+                const storedPassword = localStorage.getItem('password');
+
+                if (storedUsername !== "admin" && storedPassword !== "password") {
+                    window.location = "login.html";
+                }
+            });
         </script>
     </body>
 </html>
