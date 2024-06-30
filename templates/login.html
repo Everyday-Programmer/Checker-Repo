@@ -33,11 +33,18 @@
                     if (username === "admin" && password === "password") {
                         localStorage.setItem('username', username);
                         localStorage.setItem('password', password);
-                        window.location = "admin.html";
+                        window.location = "admin";
                     } else {
                         alert("Invalid username or password.");
                     }
                 });
+
+                const storedUsername = localStorage.getItem('username');
+                const storedPassword = localStorage.getItem('password');
+
+                if (storedUsername === "admin" && storedPassword === "password") {
+                    window.location = "admin";
+                }
             });
         </script>
     </body>

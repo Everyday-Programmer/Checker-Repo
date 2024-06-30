@@ -129,19 +129,14 @@
             margin: 10px;
         }
         #IPList h3 {
-            margin-top: 10px;
-            margin-bottom: 6px;
-            margin-left: 10px;
-            margin-right: 10px;
+            margin: 10px 10px 6px;
         }
         #IPList form {
             margin-left: 10px;
             margin-bottom: 6px;
         }
         #IPList h5 {
-            margin: 0px;
-            margin-left: 10px;
-            margin-bottom: 6px;
+            margin: 0 0 6px 10px;
         }
         #IPList form input[type=submit] {
             padding:5px 15px; 
@@ -161,19 +156,14 @@
             color: #fa4646;
         }
         #DomainList h3 {
-            margin-top: 10px;
-            margin-bottom: 6px;
-            margin-left: 10px;
-            margin-right: 10px;
+            margin: 10px 10px 6px;
         }
         #DomainList form {
             margin-left: 10px;
             margin-bottom: 6px;
         }
         #DomainList h5 {
-            margin: 0px;
-            margin-left: 10px;
-            margin-bottom: 6px;
+            margin: 0 0 6px 10px;
         }
         #DomainList form input[type=submit] {
             padding:5px 15px; 
@@ -193,15 +183,10 @@
             color: #fa4646;
         }
         #UrlList h3 {
-            margin-top: 10px;
-            margin-bottom: 6px;
-            margin-left: 10px;
-            margin-right: 10px;
+            margin: 10px 10px 6px;
         }
         #UrlList h5 {
-            margin: 0px;
-            margin-left: 10px;
-            margin-bottom: 6px;
+            margin: 0 0 6px 10px;
         }
         #UrlList form {
             margin-left: 10px;
@@ -224,6 +209,63 @@
             cursor:pointer;
             color: #fa4646;
         }
+        #rightPanel {
+            border-bottom-left-radius: 16px;
+            border-top-left-radius: 16px;
+            border: 1px none #ccc;
+            border-left-style: solid;
+        }
+        label {
+            color: #f0f0f0;
+            font-family: Calibri,sans-serif;
+            font-size: large;
+        }
+        #rightPanel input{
+            width: 100%;
+            height: 38px;
+            border-radius: 10px;
+            border: 1px solid #f0f0f0;
+            box-sizing: border-box;
+            padding: 8px;
+            font-family: Calibri,sans-serif;
+        }
+        #rightPanel select {
+            width: 100%;
+            height: 38px;
+            border-radius: 10px;
+            border: 1px solid #f0f0f0;
+            box-sizing: border-box;
+            padding: 8px;
+        }
+        #rightPanel option {
+            width: 100%;
+            height: 38px;
+            padding: 8px;
+            font-size: medium;
+            font-family: Calibri,sans-serif;
+        }
+        #rightPanel input[type="submit"] {
+            background-color: #1e69e1;
+            width: 100%;
+            display: block;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            color: white;
+            text-align: center;
+            cursor: pointer;
+            font-size: medium;
+        }
+        #rightPanel input[type="submit"]:hover {
+            background-color: #f0f0f0;
+            color: #1e69e1;
+        }
+        #rightPanel input[type="file"] {
+            height: 38px;
+            font-size: medium;
+            border: none;
+            color: #f0f0f0;
+        }
     </style>
 </head>
 <body>
@@ -235,15 +277,15 @@
                     <dt><a href="#">Dashboard</a></dt>
                     <dd style="width: 100%;">
                         <ul>
-                            <li><p style="cursor: pointer;" class="active" id="showIPList">IP List</p></li>
-                            <li><p style="cursor: pointer;" id="showDomainList">Domain List</p></li>
-                            <li><p style="cursor: pointer;" id="showUrlList">Urls List</p></li>
+                            <li><p style="cursor: pointer;" class="active" id="showIPList">IP List ({{ ip_urls | length }})</p></li>
+                            <li><p style="cursor: pointer;" id="showDomainList">Domain List ({{ domain_urls | length }})</p></li>
+                            <li><p style="cursor: pointer;" id="showUrlList">Urls List ({{ url_urls | length }})</p></li>
                         </ul>
                     </dd>
                 </dl>
             </aside>
         </div>
-        <div style="display: grid; grid-template-columns: 2fr 1fr; grid-gap: 20px; flex: 1">
+        <div style="display: grid; grid-template-columns: 2fr .8fr; grid-gap: 20px; flex: 1">
             <div>
                 <header>
                     <h1>Checker</h1>
@@ -297,14 +339,14 @@
                     </ul>
                 </div>
             </div>
-            <div>
+            <div id="rightPanel">
                 <aside class="aside" style="height: 80vh">
-                    <h2>Add new data source to database</h2>
-                    <h4>Add URL</h4>
+                    <h2 style="text-align: center;">Add new data source to database</h2>
+                    <h4 style="text-align: center;">Add URL</h4>
                     <form action="/admin/add_url" method="post">
-                        <label for="label">Label:</label>
+                        <label for="label">Label</label><br>
                         <input type="text" id="label" name="label" required><br><br>
-                        <label for="url">URL:</label>
+                        <label for="url">URL</label><br>
                         <input type="url" id="url" name="url" required><br><br>
                         <input type="hidden" name="username" value="admin">
                         <input type="hidden" name="password" value="password">
@@ -318,7 +360,7 @@
                     </form>
                     <br>
                     <hr>
-                    <h3>Upload a Text File</h3>
+                    <h3 style="text-align: center;">Upload a Text File</h3>
                     <form method="post" action="/upload" enctype="multipart/form-data">
                         <input type="file" name="file" required><br><br>
                         <label for="source">Source</label>
@@ -368,7 +410,7 @@
                 const storedPassword = localStorage.getItem('password');
 
                 if (storedUsername !== "admin" && storedPassword !== "password") {
-                    window.location = "login.html";
+                    window.location = "login";
                 }
             });
         </script>

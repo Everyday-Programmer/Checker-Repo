@@ -121,8 +121,9 @@ async def url_check(url: str = Query(..., description="Url to check")):
 
 
 @app.get("/admin", response_class=HTMLResponse)
-async def admin_page(request: Request, credentials: HTTPBasicCredentials = Depends(security)):
-    authenticate(credentials)
+async def admin_page(request: Request):
+    """, credentials: HTTPBasicCredentials = Depends(security)):"""
+    #authenticate(credentials)
     ip_url_dict = get_url_dict()
     domain_url_dict = get_domain_url_dict()
     url_url_dict = get_url_url_dict()
