@@ -18,3 +18,4 @@ COPY ./templates /app/templates
 
 # Expose port for FastAPI
 EXPOSE 8000
+EXPOSE 8040

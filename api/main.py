@@ -1,10 +1,8 @@
 import ipaddress
-from dotenv import load_dotenv
 import os
-from datetime import datetime
-import pytz
 
-from fastapi import FastAPI, Request, Form, HTTPException, Depends, Query, File, UploadFile
+from dotenv import load_dotenv
+from fastapi import FastAPI, Request, Form, HTTPException, Query, File, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.staticfiles import StaticFiles
@@ -150,9 +148,9 @@ async def login(request: Request, username: str = Form(...), password: str = For
 
 
 @app.post("/admin/add_url", response_class=HTMLResponse)
-async def add_url(request: Request, label: str = Form(...), url: str = Form(...),
-                  credentials: HTTPBasicCredentials = Depends(security), add_to: str = Form(...)):
-    authenticate(credentials)
+async def add_url(request: Request, label: str = Form(...), url: str = Form(...), add_to: str = Form(...)):
+    # credentials: HTTPBasicCredentials = Depends(security), add_to: str = Form(...)):
+    #authenticate(credentials)
 
     if add_to == "IP Address":
         ip_url_collection.insert_one({"source": label, "url": url})
@@ -164,9 +162,9 @@ async def add_url(request: Request, label: str = Form(...), url: str = Form(...)
 
 
 @app.post("/admin/delete_url", response_class=HTMLResponse)
-async def delete_url(request: Request, opt: str = Query(...), label: str = Form(...),
-                     credentials: HTTPBasicCredentials = Depends(security)):
-    authenticate(credentials)
+async def delete_url(request: Request, opt: str = Query(...), label: str = Form(...)):
+    #credentials: HTTPBasicCredentials = Depends(security)):
+    #authenticate(credentials)
     try:
         if opt == "ip":
             ip_url_collection.delete_one({"source": label})

@@ -7,23 +7,13 @@ from datetime import datetime
 from urllib.parse import urlparse
 
 import requests
-import socketio
 from apscheduler.schedulers.blocking import BlockingScheduler
 from dotenv import load_dotenv
-from fastapi import FastAPI
-from flask_socketio import emit
 from pymongo import MongoClient
-from pymongo.errors import ServerSelectionTimeoutError, OperationFailure
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 load_dotenv()
-
-app = FastAPI()
-
-# Create a Socket.IO server
-sio = socketio.AsyncServer(async_mode='asgi')
-app.mount("/socket.io", socketio.ASGIApp(sio))
 
 client = MongoClient(os.getenv('MONGO_DB'))
 db = client["checker"]
@@ -72,18 +62,11 @@ def read_local_file(file_path):
 
 
 def extract_ips_from_text(text):
-    # Regex to find IPv4 and IPv6 addresses
     ip_pattern = r'\b(?:\d{1,3}\.){3}\d{1,3}\b|\b(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}\b'
 
-    # Find all occurrences of IPs in the text
     ips = re.findall(ip_pattern, text)
 
     return ips
-
-
-@sio.event
-async def connect(sid, environ):
-    await sio.emit('log_message', {'data': 'Connected to server'})
 
 
 def fetch_and_store_ips():
@@ -116,12 +99,9 @@ def fetch_and_store_ips():
                             seen_ips.add(ip)
                         elif ip in seen_ips:
                             logging.info(f"Duplicate IP {ip} removed from {url}")
-                            sio.emit('log_message', {'data': f"Duplicate IP {ip} removed from {url}"})
                     except ValueError:
                         logging.warning(f"Invalid IP address {ip} extracted from {url}")
-                        sio.emit('log_message', {'data': f"Invalid IP address {ip} extracted from {url}"})
         except requests.RequestException as e:
-            sio.emit('log_message', {'data': f"Failed to fetch IPs from {url}: {e}"})
             logging.error(f"Failed to fetch IPs from {url}: {e}")
 
     if new_ips:
@@ -133,7 +113,6 @@ def fetch_and_store_ips():
             upsert=True
         )
         logging.info(f"IP addresses updated at {last_updated}")
-        sio.emit('log_message', {'data': f"IP addresses updated at {last_updated}"})
         # cleanup_duplicates()
 
 
@@ -173,10 +152,8 @@ def fetch_and_store_domains():
                         seen_domains.add(domain)
                     elif domain in seen_domains:
                         logging.info(f"Duplicate domain {domain} removed from {url}")
-                        sio.emit('log_message', {'data': f"Duplicate domain {domain} removed from {url}"})
         except requests.RequestException as e:
             logging.error(f"Failed to fetch domains from {url}: {e}")
-            sio.emit('log_message', {'data': f"Failed to fetch domains from {url}: {e}"})
 
     if new_domains:
         domain_collection.delete_many({})
@@ -187,7 +164,6 @@ def fetch_and_store_domains():
             upsert=True
         )
         logging.info(f"Domains updated at {last_updated}")
-        sio.emit('log_message', {'data': f"Domains updated at {last_updated}"})
         # cleanup_duplicate_domains()
 
 
@@ -219,7 +195,6 @@ def fetch_and_store_urls():
                 url_list = response.text.splitlines()
 
             for line in url_list:
-                # Extract URLs from each line of text
                 urls_in_line = extract_urls_from_text(line)
 
                 for url1 in urls_in_line:
@@ -231,13 +206,10 @@ def fetch_and_store_urls():
                             seen_urls.add(url1)
                         elif url1 not in seen_urls:
                             logging.info(f"Duplicate url {url1} removed from {url}")
-                            sio.emit('log_message', {'data': f"Domains updated at {last_updated}"})
                     except Exception as e:
                         logging.warning(f"Invalid URL {url} extracted from {url}: {e}")
-                        sio.emit('log_message', {'data': f"Invalid URL {url} extracted from {url}: {e}"})
         except requests.RequestException as e:
             logging.error(f"Failed to fetch URLs from {url}: {e}")
-            sio.emit('log_message', {'data': f"Failed to fetch URLs from {url}: {e}"})
 
     if new_urls:
         url_collection.delete_many({})
@@ -248,7 +220,6 @@ def fetch_and_store_urls():
             upsert=True
         )
         logging.info(f"URLs updated at {last_updated}")
-        sio.emit('log_message', {'data': f"URLs updated at {last_updated}"})
         # cleanup_duplicate_urls()
 
 
@@ -338,27 +309,7 @@ scheduler.add_job(fetch_and_store_domains, 'interval', hours=2)
 scheduler.add_job(fetch_and_store_urls, 'interval', hours=2)
 
 
-# scheduler.add_job(listen_for_updates, 'interval', minutes=1)
-
-def ensure_replica_set_initiated():
-    global sync_client
-    try:
-        sync_client = MongoClient("mongodb://host.docker.internal:27017/")
-        # Attempt to check the replica set status
-        rs_status = client.admin.command("replSetGetStatus")
-        logging.info("Replica set already initiated")
-    except OperationFailure as e:
-        if e.details.get('code') == 94:
-            logging.info("Initiating replica set")
-            sync_client.admin.command("replSetInitiate")
-        else:
-            raise e
-    except ServerSelectionTimeoutError:
-        logging.error("Could not connect to MongoDB server. Ensure MongoDB is running.")
-
-
 if __name__ == "__main__":
-    # ensure_replica_set_initiated()
     threading.Thread(target=listen_for_updates, daemon=True).start()
     fetch_and_store_ips()
     fetch_and_store_domains()

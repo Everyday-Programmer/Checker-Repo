@@ -5,4 +5,4 @@ requests
 apscheduler
 ioc_finder
 tld
-flask_socketio
+starlette
