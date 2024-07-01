@@ -7,16 +7,23 @@ from datetime import datetime
 from urllib.parse import urlparse
 
 import requests
+import socketio
 from apscheduler.schedulers.blocking import BlockingScheduler
 from dotenv import load_dotenv
+from fastapi import FastAPI
+from flask_socketio import emit
 from pymongo import MongoClient
 from pymongo.errors import ServerSelectionTimeoutError, OperationFailure
-from tld import get_tld
-from tld.exceptions import TldDomainNotFound
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 load_dotenv()
+
+app = FastAPI()
+
+# Create a Socket.IO server
+sio = socketio.AsyncServer(async_mode='asgi')
+app.mount("/socket.io", socketio.ASGIApp(sio))
 
 client = MongoClient(os.getenv('MONGO_DB'))
 db = client["checker"]
@@ -74,6 +81,11 @@ def extract_ips_from_text(text):
     return ips
 
 
+@sio.event
+async def connect(sid, environ):
+    await sio.emit('log_message', {'data': 'Connected to server'})
+
+
 def fetch_and_store_ips():
     last_updated = datetime.utcnow()
     new_ips = []
@@ -104,9 +116,12 @@ def fetch_and_store_ips():
                             seen_ips.add(ip)
                         elif ip in seen_ips:
                             logging.info(f"Duplicate IP {ip} removed from {url}")
+                            sio.emit('log_message', {'data': f"Duplicate IP {ip} removed from {url}"})
                     except ValueError:
                         logging.warning(f"Invalid IP address {ip} extracted from {url}")
+                        sio.emit('log_message', {'data': f"Invalid IP address {ip} extracted from {url}"})
         except requests.RequestException as e:
+            sio.emit('log_message', {'data': f"Failed to fetch IPs from {url}: {e}"})
             logging.error(f"Failed to fetch IPs from {url}: {e}")
 
     if new_ips:
@@ -118,6 +133,7 @@ def fetch_and_store_ips():
             upsert=True
         )
         logging.info(f"IP addresses updated at {last_updated}")
+        sio.emit('log_message', {'data': f"IP addresses updated at {last_updated}"})
         # cleanup_duplicates()
 
 
@@ -157,8 +173,10 @@ def fetch_and_store_domains():
                         seen_domains.add(domain)
                     elif domain in seen_domains:
                         logging.info(f"Duplicate domain {domain} removed from {url}")
+                        sio.emit('log_message', {'data': f"Duplicate domain {domain} removed from {url}"})
         except requests.RequestException as e:
             logging.error(f"Failed to fetch domains from {url}: {e}")
+            sio.emit('log_message', {'data': f"Failed to fetch domains from {url}: {e}"})
 
     if new_domains:
         domain_collection.delete_many({})
@@ -169,6 +187,7 @@ def fetch_and_store_domains():
             upsert=True
         )
         logging.info(f"Domains updated at {last_updated}")
+        sio.emit('log_message', {'data': f"Domains updated at {last_updated}"})
         # cleanup_duplicate_domains()
 
 
@@ -203,17 +222,22 @@ def fetch_and_store_urls():
                 # Extract URLs from each line of text
                 urls_in_line = extract_urls_from_text(line)
 
-                for url in urls_in_line:
+                for url1 in urls_in_line:
                     try:
-                        parsed_url = urlparse(url)
+                        parsed_url = urlparse(url1)
                         # Check if scheme and netloc are present
-                        if parsed_url.scheme and parsed_url.netloc and url not in seen_urls:
-                            new_urls.append({"url": url, "source": label})
-                            seen_urls.add(url)
+                        if parsed_url.scheme and parsed_url.netloc and url1 not in seen_urls:
+                            new_urls.append({"url": url1, "source": label})
+                            seen_urls.add(url1)
+                        elif url1 not in seen_urls:
+                            logging.info(f"Duplicate url {url1} removed from {url}")
+                            sio.emit('log_message', {'data': f"Domains updated at {last_updated}"})
                     except Exception as e:
                         logging.warning(f"Invalid URL {url} extracted from {url}: {e}")
+                        sio.emit('log_message', {'data': f"Invalid URL {url} extracted from {url}: {e}"})
         except requests.RequestException as e:
             logging.error(f"Failed to fetch URLs from {url}: {e}")
+            sio.emit('log_message', {'data': f"Failed to fetch URLs from {url}: {e}"})
 
     if new_urls:
         url_collection.delete_many({})
@@ -224,6 +248,7 @@ def fetch_and_store_urls():
             upsert=True
         )
         logging.info(f"URLs updated at {last_updated}")
+        sio.emit('log_message', {'data': f"URLs updated at {last_updated}"})
         # cleanup_duplicate_urls()
 
 

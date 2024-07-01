@@ -5,3 +5,4 @@ requests
 apscheduler
 ioc_finder
 tld
+socketio
