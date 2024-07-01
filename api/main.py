@@ -2,11 +2,12 @@ import ipaddress
 import os
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, Request, Form, HTTPException, Query, File, UploadFile
+from fastapi import FastAPI, Request, Form, HTTPException, Depends, Query, File, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse
-from fastapi.security import HTTPBasic, HTTPBasicCredentials
+from fastapi.security import HTTPBasic, HTTPBasicCredentials, APIKeyHeader
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from fastapi.middleware.cors import CORSMiddleware
 from pymongo import MongoClient
 from starlette.status import HTTP_401_UNAUTHORIZED
 
@@ -17,6 +18,8 @@ templates = Jinja2Templates(directory="templates")
 security = HTTPBasic()
 UPLOAD_FOLDER = 'uploads'
 
+API_KEY_HEADER = APIKeyHeader(name="X-API-Key")
+
 client = MongoClient(os.getenv('MONGO_DB'))
 db = client["checker"]
 collection = db["ip_addresses"]
@@ -26,12 +29,28 @@ meta_collection = db["metadata"]
 ip_url_collection = db["ip_urls"]
 domain_url_collection = db["domain_urls"]
 url_urls_collection = db["url_urls"]
+api_key_collection = db["api_keys"]
 
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 
 app.mount("/uploads", StaticFiles(directory=UPLOAD_FOLDER), name="uploads")
 
+
+origins = [
+    "http://localhost",
+    "http://localhost:8000",
+    "http://156.67.80.79.1:8000",
+    "*",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 def authenticate(credentials: HTTPBasicCredentials):
     correct_username = "admin"
@@ -41,6 +60,16 @@ def authenticate(credentials: HTTPBasicCredentials):
             status_code=HTTP_401_UNAUTHORIZED,
             detail="Invalid credentials",
             headers={"WWW-Authenticate": "Basic"},
+        )
+
+
+def validate_api_key(api_key: str = Depends(API_KEY_HEADER)):
+    result = api_key_collection.find_one({"api_key": api_key})
+    if not result:
+        raise HTTPException(
+            status_code=HTTP_401_UNAUTHORIZED,
+            detail="Invalid API Key",
+            headers={"WWW-Authenticate": "API key"},
         )
 
 
@@ -79,7 +108,7 @@ def is_ip_in_cidr(ip: str, cidr: str) -> bool:
 
 
 @app.get("/ipCheck/")
-async def ip_check(ip: str = Query(..., description="IP address to check")):
+async def ip_check(ip: str = Query(..., description="IP address to check"), api_key: str = Depends(validate_api_key)):
     last_updated_doc = meta_collection.find_one({"_id": "last_updated"})
     last_updated = last_updated_doc["timestamp"] if last_updated_doc else None
 
@@ -92,30 +121,30 @@ async def ip_check(ip: str = Query(..., description="IP address to check")):
 
 
 @app.get("/domainCheck/")
-async def domain_check(domain: str = Query(..., description="Domain to check")):
+async def domain_check(domain: str = Query(..., description="Domain to check"), api_key: str = Depends(validate_api_key)):
     try:
         result = domain_collection.find_one({"domain": domain})
         last_updated_doc = meta_collection.find_one({"_id": "last_updated"})
         last_updated = last_updated_doc["timestamp"] if last_updated_doc else "N/A"
         if result:
-            return {"exists": True, "domain": result["domain"], "source": result["source"],
+            return {"exists": "True", "domain": result["domain"], "source": result["source"],
                     "last_updated": last_updated}
         else:
-            return {"exists": False, "last_updated": last_updated}
+            return {"exists": "False", "last_updated": last_updated}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Internal Server Error {e}")
 
 
 @app.get("/urlCheck/")
-async def url_check(url: str = Query(..., description="Url to check")):
+async def url_check(url: str = Query(..., description="Url to check"), api_key: str = Depends(validate_api_key)):
     try:
         result = url_collection.find_one({"url": url})
         last_updated_doc = meta_collection.find_one({"_id": "last_updated"})
         last_updated = last_updated_doc["timestamp"] if last_updated_doc else "N/A"
         if result:
-            return {"exists": True, "url": result["url"], "source": result["source"], "last_updated": last_updated}
+            return {"exists": "True", "url": result["url"], "source": result["source"], "last_updated": last_updated}
         else:
-            return {"exists": False, "last_updated": last_updated}
+            return {"exists": "False", "last_updated": last_updated}
     except Exception:
         raise HTTPException(status_code=500, detail="Internal Server Error")
 
