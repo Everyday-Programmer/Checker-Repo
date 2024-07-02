@@ -30,6 +30,9 @@ ip_url_collection = db["ip_urls"]
 domain_url_collection = db["domain_urls"]
 url_urls_collection = db["url_urls"]
 api_key_collection = db["api_keys"]
+ip_score_collection = db["ip_scores"]
+domain_score_collection = db["domain_scores"]
+url_score_collection = db["url_scores"]
 
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
@@ -109,13 +112,21 @@ def is_ip_in_cidr(ip: str, cidr: str) -> bool:
 
 @app.get("/ipCheck/")
 async def ip_check(ip: str = Query(..., description="IP address to check"), api_key: str = Depends(validate_api_key)):
+    ip_doc = ip_score_collection.find_one({"ip": ip})
+    if ip_doc:
+        ip_score_collection.update_one({"ip": ip}, {"$inc": {"count": 1}})
+        count = ip_doc["count"] + 1
+    else:
+        ip_score_collection.insert_one({"ip": ip, "count": 1})
+        count = 1
+
     last_updated_doc = meta_collection.find_one({"_id": "last_updated"})
     last_updated = last_updated_doc["timestamp"] if last_updated_doc else None
 
     for record in collection.find():
         cidr = record["ip"]
         if is_ip_in_cidr(ip, cidr):
-            return {"exists": "True", "ip": ip, "source": record["source"], "last_updated": last_updated}
+            return {"exists": "True", "ip": ip, "source": record["source"], "last_updated": last_updated, "count": count}
 
     return {"exists": "False", "last_updated": last_updated}
 
@@ -123,12 +134,20 @@ async def ip_check(ip: str = Query(..., description="IP address to check"), api_
 @app.get("/domainCheck/")
 async def domain_check(domain: str = Query(..., description="Domain to check"), api_key: str = Depends(validate_api_key)):
     try:
+        domain_doc = domain_score_collection.find_one({"domain": domain})
+        if domain_doc:
+            domain_score_collection.update_one({"domain": domain}, {"$inc": {"count": 1}})
+            count = domain_doc["count"] + 1
+        else:
+            domain_score_collection.insert_one({"domain": domain, "count": 1})
+            count = 1
+
         result = domain_collection.find_one({"domain": domain})
         last_updated_doc = meta_collection.find_one({"_id": "last_updated"})
         last_updated = last_updated_doc["timestamp"] if last_updated_doc else "N/A"
         if result:
             return {"exists": "True", "domain": result["domain"], "source": result["source"],
-                    "last_updated": last_updated}
+                    "last_updated": last_updated, "count": count}
         else:
             return {"exists": "False", "last_updated": last_updated}
     except Exception as e:
@@ -138,11 +157,19 @@ async def domain_check(domain: str = Query(..., description="Domain to check"), 
 @app.get("/urlCheck/")
 async def url_check(url: str = Query(..., description="Url to check"), api_key: str = Depends(validate_api_key)):
     try:
+        url_doc = url_score_collection.find_one({"url": url})
+        if url_doc:
+            url_score_collection.update_one({"url": url}, {"$inc": {"count": 1}})
+            count = url_doc["count"] + 1
+        else:
+            url_score_collection.insert_one({"url": url, "count": 1})
+            count = 1
+
         result = url_collection.find_one({"url": url})
         last_updated_doc = meta_collection.find_one({"_id": "last_updated"})
         last_updated = last_updated_doc["timestamp"] if last_updated_doc else "N/A"
         if result:
-            return {"exists": "True", "url": result["url"], "source": result["source"], "last_updated": last_updated}
+            return {"exists": "True", "url": result["url"], "source": result["source"], "last_updated": last_updated, "count": count}
         else:
             return {"exists": "False", "last_updated": last_updated}
     except Exception:
