@@ -5,21 +5,21 @@ Endpoint:
 ```
 GET /ipCheck/
 ```
-# Query Parameters
+### Query Parameters
 - ip (required): The IP address to be checked.
-# Headers
+### Headers
 - X-API-Key (required): The API key used for authentication.<br>
-# Response
+### Response
 - 200 OK (Found): Indicates that the given IP address exists in blocklist, marking it as an Indicator of Compromise (IOC).
 - 200 OK (Not Found): Indicates that the IP address does not exist in the blocklist.
 - 401 Unauthorized: Indicates that the provided API key is missing or invalid.
-# Curl
+### Curl
 ```
 curl -G "http://localhost:8000/ipCheck/" \
      --data-urlencode "ip=192.168.0.1" \
      -H "X-API-Key: your_api_key"
 ```
-# Example Responses
+### Example Responses
 200 OK (IP found)
 ```
 {
@@ -49,21 +49,21 @@ Endpoint:
 ```
 GET /domainCheck/
 ```
-# Query Parameters
+### Query Parameters
 - domain (required): The domain name to be checked.
-# Headers
+### Headers
 - X-API-Key (required): The API key used for authentication.
-# Response
+### Response
 - 200 OK (Found): Indicates that the given domain exists in blocklist, marking it as an Indicator of Compromise (IOC).
 - 200 OK (Not Found): Indicates that the domain does not exist in the blocklist.
 - 401 Unauthorized: Indicates that the provided API key is missing or invalid.
-# Curl
+### Curl
 ```
 curl -G "http://localhost:8000/domainCheck/" \
      --data-urlencode "domain=example.com" \
      -H "X-API-Key: your_api_key"
 ```
-# Example Responses
+### Example Responses
 200 OK (IP found)
 ```
 {
@@ -93,21 +93,21 @@ Endpoint:
 ```
 GET /urlCheck/
 ```
-# Query Parameters
+### Query Parameters
 - url (required): The url to be checked.
-# Headers
+### Headers
 - X-API-Key (required): The API key used for authentication.
-# Response
+### Response
 - 200 OK (Found): Indicates that the given url in blocklist, marking it as an Indicator of Compromise (IOC).
 - 200 OK (Not Found): Indicates that the url does not exist in the blocklist.
 - 401 Unauthorized: Indicates that the provided API key is missing or invalid.
-# Curl
+### Curl
 ```
 curl -G "http://localhost:8000/urlCheck/" \
      --data-urlencode "url=http://example.com/path" \
      -H "X-API-Key: your_api_key"
 ```
-# Example Responses
+### Example Responses
 200 OK (IP found)
 ```
 {
