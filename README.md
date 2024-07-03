@@ -43,7 +43,7 @@ curl -G "http://localhost:8000/ipCheck/" \
   "detail": "Invalid API Key"
 }
 ```
-Domain Check API
+### Domain Check API
 The `domainCheck` endpoint verifies if a given domain is present in the blocklist, indicating it as a potential Indicator of Compromise (IOC).
 Endpoint:
 ```
@@ -87,7 +87,7 @@ curl -G "http://localhost:8000/domainCheck/" \
   "detail": "Invalid API Key"
 }
 ```
-URL Check API
+### URL Check API
 The `urlCheck` endpoint verifies if a given url is present in the blocklist, indicating it as a potential Indicator of Compromise (IOC).
 Endpoint:
 ```
