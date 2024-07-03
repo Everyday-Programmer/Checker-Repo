@@ -1,5 +1,5 @@
 # IOC Checker API
-IP Check
+### IP Check
 The `ipCheck` endpoint verifies if a given ip is present in the blocklist, indicating it as a potential Indicator of Compromise (IOC).
 Endpoint:
 ```
