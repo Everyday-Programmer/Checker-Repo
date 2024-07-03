@@ -64,7 +64,7 @@ curl -G "http://localhost:8000/domainCheck/" \
      -H "X-API-Key: your_api_key"
 ```
 ### Example Responses
-200 OK (IP found)
+200 OK (Domain found)
 ```
 {
     "exists": "True",
@@ -74,7 +74,7 @@ curl -G "http://localhost:8000/domainCheck/" \
     "count": 5
 }
 ```
-200 OK (IP not found)
+200 OK (Domain not found)
 ```
 {
     "exists": "False",
@@ -108,7 +108,7 @@ curl -G "http://localhost:8000/urlCheck/" \
      -H "X-API-Key: your_api_key"
 ```
 ### Example Responses
-200 OK (IP found)
+200 OK (URL found)
 ```
 {
     "exists": "True",
@@ -118,7 +118,7 @@ curl -G "http://localhost:8000/urlCheck/" \
     "count": 3
 }
 ```
-200 OK (IP not found)
+200 OK (URL not found)
 ```
 {
     "exists": "False",
