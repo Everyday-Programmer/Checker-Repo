@@ -8,10 +8,10 @@ GET /ipCheck/
 # Query Parameters
 - ip (required): The IP address to be checked.
 Headers
-- X-API-Key (required): The API key used for authentication.
+- X-API-Key (required): The API key used for authentication.<br>
 Response
-- 200 OK: Indicates that the IP address exists in the database, marking it as an Indicator of Compromise (IOC).
-- 404 Not Found: Indicates that the IP address does not exist in the database.
+- 200 OK: Indicates that the given IP address exists in blocklist, marking it as an Indicator of Compromise (IOC).
+- 404 Not Found: Indicates that the IP address does not exist in the blocklist.
 - 401 Unauthorized: Indicates that the provided API key is missing or invalid.
 Curl
 ```
