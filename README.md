@@ -20,7 +20,7 @@ curl -G "http://localhost:8000/ipCheck/" \
      -H "X-API-Key: your_api_key"
 ```
 # Example Responses
-200 OK
+200 OK (IP found)
 ```
 {
     "exists": "True",
@@ -28,5 +28,18 @@ curl -G "http://localhost:8000/ipCheck/" \
     "source": "Blocklist.de",
     "last_updated": "2024-07-04T12:00:00Z",
     "count": 10
+}
+```
+200 OK (IP not found)
+```
+{
+    "exists": false,
+    "last_updated": "2024-07-04T12:00:00Z"
+}
+```
+401 Unauthorized
+```
+{
+  "detail": "Invalid API Key"
 }
 ```
