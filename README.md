@@ -1,8 +1,10 @@
 # IOC Checker API
 IP Check
-The `ipCheck` endpoint is used to verify if an IP is an Indicator of Compromise (IOC).
+The `ipCheck` endpoint is used to verify if an IP is an Indicator of Compromise (IOC).<br>
 Endpoint:
-``` GET /ipCheck/ ```
+```
+GET /ipCheck/
+```
 # Query Parameters
 - ip (required): The IP address to be checked.
 Headers
