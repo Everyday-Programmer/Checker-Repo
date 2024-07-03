@@ -9,6 +9,8 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 from pymongo import MongoClient
+from pydantic import BaseModel
+from bson import ObjectId
 from starlette.status import HTTP_401_UNAUTHORIZED
 
 load_dotenv()
@@ -40,6 +42,11 @@ if not os.path.exists(UPLOAD_FOLDER):
 app.mount("/uploads", StaticFiles(directory=UPLOAD_FOLDER), name="uploads")
 
 
+class APIKeyModel(BaseModel):
+    api_key: str
+    user_id: str
+
+
 origins = [
     "http://localhost",
     "http://localhost:8000",
@@ -54,6 +61,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 def authenticate(credentials: HTTPBasicCredentials):
     correct_username = "admin"
@@ -126,13 +134,15 @@ async def ip_check(ip: str = Query(..., description="IP address to check"), api_
     for record in collection.find():
         cidr = record["ip"]
         if is_ip_in_cidr(ip, cidr):
-            return {"exists": "True", "ip": ip, "source": record["source"], "last_updated": last_updated, "count": count}
+            return {"exists": "True", "ip": ip, "source": record["source"], "last_updated": last_updated,
+                    "count": count}
 
     return {"exists": "False", "last_updated": last_updated}
 
 
 @app.get("/domainCheck/")
-async def domain_check(domain: str = Query(..., description="Domain to check"), api_key: str = Depends(validate_api_key)):
+async def domain_check(domain: str = Query(..., description="Domain to check"),
+                       api_key: str = Depends(validate_api_key)):
     try:
         domain_doc = domain_score_collection.find_one({"domain": domain})
         if domain_doc:
@@ -169,11 +179,22 @@ async def url_check(url: str = Query(..., description="Url to check"), api_key: 
         last_updated_doc = meta_collection.find_one({"_id": "last_updated"})
         last_updated = last_updated_doc["timestamp"] if last_updated_doc else "N/A"
         if result:
-            return {"exists": "True", "url": result["url"], "source": result["source"], "last_updated": last_updated, "count": count}
+            return {"exists": "True", "url": result["url"], "source": result["source"], "last_updated": last_updated,
+                    "count": count}
         else:
             return {"exists": "False", "last_updated": last_updated}
     except Exception:
         raise HTTPException(status_code=500, detail="Internal Server Error")
+
+
+@app.post("/api_generated")
+async def save_api_key(api_key_model: APIKeyModel):
+    api_key = api_key_model.api_key
+    if not api_key:
+        raise HTTPException(status_code=400, detail="API key is required")
+
+    result = api_key_collection.insert_one({"api_key": api_key, "user_id": api_key_model.user_id})
+    return {"id": str(result.inserted_id)}
 
 
 @app.get("/admin", response_class=HTMLResponse)

@@ -266,6 +266,43 @@
             border: none;
             color: #f0f0f0;
         }
+        #APIGenerate input[type="text"]{
+            width: 40%;
+            height: 38px;
+            border-radius: 10px;
+            border: 1px solid #f0f0f0;
+            box-sizing: border-box;
+            padding: 8px;
+            font-family: Calibri,sans-serif;
+            font-size: large;
+        }
+        #APIGenerate input[type="submit"], input[type="button"] {
+            background-color: #1e69e1;
+            width: fit-content;
+            height: 40px;
+            display: block;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            color: white;
+            text-align: center;
+            cursor: pointer;
+            font-size: medium;
+            margin: auto;
+            padding: 12px;
+        }
+        #APIGenerate input[type="submit"]:hover, input[type="button"]:hover {
+            background-color: #f0f0f0;
+            color: #1e69e1;
+        }
+        #APIGenerate input[type="button"][disabled] {
+            background-color: rgba(113, 121, 124, 0.1);
+            color: white;
+        }
+        #APIGenerate input[type="button"][disabled]:hover {
+            background-color: rgba(113, 121, 124, 0.1);
+            color: white;
+        }
     </style>
 </head>
 <body>
@@ -280,6 +317,7 @@
                             <li><p style="cursor: pointer;" class="active" id="showIPList">IP List ({{ ip_urls | length }})</p></li>
                             <li><p style="cursor: pointer;" id="showDomainList">Domain List ({{ domain_urls | length }})</p></li>
                             <li><p style="cursor: pointer;" id="showUrlList">Urls List ({{ url_urls | length }})</p></li>
+                            <li><p style="cursor: pointer;" id="showGenerateAPI">Generate API Key</p></li>
                         </ul>
                     </dd>
                 </dl>
@@ -342,6 +380,18 @@
                         {% endfor %}
                     </ul>
                 </div>
+                <div id="APIGenerate" style="display: none;">
+                    <h3 style="width: 100%; text-align: center;">Generate API Key</h3>
+                    <div style="text-align: center;">
+                        <label for="apiKey">API Key:</label><br>
+                        <input type="text" id="apiKey" readonly><br><br>
+                        <div style="width: 40%; display: grid; grid-template-columns: 50% 50%; margin: auto;">
+                            <input type="submit" id="generateAPI" value="Generate API">
+                            <input type="button" id="copyAPI" value="Copy API Key" disabled>
+                        </div>
+                        <p id="apiCopied" style="display: none; color: chartreuse;">API Key copied to clipboard!</p>
+                    </div>
+                </div>
             </div>
             <div id="rightPanel">
                 <aside class="aside" style="height: 80vh">
@@ -396,27 +446,52 @@
                 document.getElementById("IPList").style.display = "block";
                 document.getElementById("DomainList").style.display = "none";
                 document.getElementById("UrlList").style.display = "none";
+                document.getElementById("APIGenerate").style.display = "none";
                 document.getElementById("showIPList").classList.add("active");
                 document.getElementById("showDomainList").classList.remove("active");
                 document.getElementById("showUrlList").classList.remove("active");
+                document.getElementById("showGenerateAPI").classList.remove("active");
             }
 
             document.getElementById("showDomainList").onclick = function() {
                 document.getElementById("DomainList").style.display = "block";
                 document.getElementById("IPList").style.display = "none";
                 document.getElementById("UrlList").style.display = "none";
+                document.getElementById("APIGenerate").style.display = "none";
                 document.getElementById("showDomainList").classList.add("active");
                 document.getElementById("showIPList").classList.remove("active");
                 document.getElementById("showUrlList").classList.remove("active");
+                document.getElementById("showGenerateAPI").classList.remove("active");
             }
 
             document.getElementById("showUrlList").onclick = function() {
                 document.getElementById("UrlList").style.display = "block";
                 document.getElementById("IPList").style.display = "none";
+                document.getElementById("APIGenerate").style.display = "none";
                 document.getElementById("DomainList").style.display = "none";
                 document.getElementById("showUrlList").classList.add("active");
                 document.getElementById("showIPList").classList.remove("active");
                 document.getElementById("showDomainList").classList.remove("active");
+                document.getElementById("showGenerateAPI").classList.remove("active");
+            }
+
+            document.getElementById("showGenerateAPI").onclick = function() {
+                document.getElementById("APIGenerate").style.display = "block";
+                document.getElementById("UrlList").style.display = "none";
+                document.getElementById("IPList").style.display = "none";
+                document.getElementById("DomainList").style.display = "none";
+                document.getElementById("showGenerateAPI").classList.add("active");
+                document.getElementById("showUrlList").classList.remove("active");
+                document.getElementById("showIPList").classList.remove("active");
+                document.getElementById("showDomainList").classList.remove("active");
+            }
+
+            document.getElementById("generateAPI").onclick = function() {
+                generateApiKey();
+            }
+
+            document.getElementById("copyAPI").onclick = function () {
+                copyToClipboard()
             }
 
             document.addEventListener('DOMContentLoaded', () => {
@@ -427,6 +502,56 @@
                     window.location = "login";
                 }
             });
+
+            function generateApiKey() {
+                const apiKeyLength = 16;
+                const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+                let apiKey = '';
+
+                for (let i = 0; i < apiKeyLength; i++) {
+                    const randomIndex = Math.floor(Math.random() * characters.length);
+                    apiKey += characters[randomIndex];
+                }
+
+                document.getElementById('apiKey').value = apiKey;
+                sendApiKey(apiKey, "admin");
+            }
+
+            async function copyToClipboard() {
+                const apiKey = document.getElementById('apiKey').value;
+
+                try {
+                    await navigator.clipboard.writeText(apiKey);
+                    document.getElementById('apiCopied').style.display = "block";
+                } catch (err) {
+                    console.error('Failed to copy: ', err);
+                }
+            }
+
+            async function sendApiKey(apiKey, userId) {
+                try {
+                    const response = await fetch('/api_generated', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            api_key: apiKey,
+                            user_id: userId
+                        })
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Failed to save API key');
+                    }
+
+                    const result = await response.json();
+                    console.log('API key saved with ID:', result.id);
+                    document.getElementById("copyAPI").disabled = false;
+                } catch (error) {
+                    console.error('Error:', error);
+                }
+            }
         </script>
     </body>
 </html>
