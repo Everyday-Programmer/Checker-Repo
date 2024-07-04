@@ -24,6 +24,7 @@ meta_collection = db["metadata"]
 ip_url_collection = db["ip_urls"]
 domain_url_collection = db["domain_urls"]
 url_url_collection = db["url_urls"]
+settings_collection = db["settings"]
 
 
 # collection.create_index([("ip", ASCENDING)], unique=True)
@@ -224,14 +225,22 @@ def fetch_and_store_urls():
 
 
 def listen_for_updates():
+    global update_interval
+    global automatic_update
+    global scheduler
     previous_ips = get_url_dict()
     previous_domains = get_domain_url_dict()
     previous_urls = get_url_url_dict()
+    previous_interval = update_interval
+    previous_automatic_update = automatic_update
 
     while True:
         current_ips = get_url_dict()
         current_domains = get_domain_url_dict()
         current_urls = get_url_url_dict()
+        settings_document = settings_collection.find_one({"_id": 1})
+        current_update_interval = settings_document["update_interval"] if settings_document else 1
+        current_automatic_update = settings_document["enable_automatic_update"] if settings_document else True
 
         if previous_ips != current_ips:
             fetch_and_store_ips()
@@ -244,6 +253,32 @@ def listen_for_updates():
         if previous_urls != current_urls:
             fetch_and_store_urls()
             previous_urls = current_urls
+
+        if previous_interval != current_update_interval:
+            if scheduler.running:
+                scheduler.remove_all_jobs()
+                scheduler.shutdown()
+            if current_automatic_update:
+                scheduler.add_job(fetch_and_store_ips, 'interval', minutes=current_update_interval)
+                scheduler.add_job(fetch_and_store_domains, 'interval', minutes=current_update_interval)
+                scheduler.add_job(fetch_and_store_urls, 'interval', minutes=current_update_interval)
+                scheduler.start()
+            else:
+                scheduler.add_job(listen_for_updates, 'interval', minutes=10)
+                scheduler.start()
+
+        if previous_automatic_update != current_automatic_update:
+            if scheduler.running:
+                scheduler.remove_all_jobs()
+                scheduler.shutdown()
+            if current_automatic_update:
+                scheduler.add_job(fetch_and_store_ips, 'interval', minutes=current_update_interval)
+                scheduler.add_job(fetch_and_store_domains, 'interval', minutes=current_update_interval)
+                scheduler.add_job(fetch_and_store_urls, 'interval', minutes=current_update_interval)
+                scheduler.start()
+            else:
+                scheduler.add_job(listen_for_updates, 'interval', minutes=10)
+                scheduler.start()
 
 
 def cleanup_duplicates():
@@ -302,16 +337,24 @@ def cleanup_duplicate_urls():
         url_collection.delete_many({"_id": {"$in": ids_to_remove}})
         logging.info(f"Removed {len(ids_to_remove)} duplicate(s) for URL {duplicate['_id']}")
 
-
-scheduler = BlockingScheduler()
-scheduler.add_job(fetch_and_store_ips, 'interval', hours=2)
-scheduler.add_job(fetch_and_store_domains, 'interval', hours=2)
-scheduler.add_job(fetch_and_store_urls, 'interval', hours=2)
-
-
 if __name__ == "__main__":
-    threading.Thread(target=listen_for_updates, daemon=True).start()
-    fetch_and_store_ips()
-    fetch_and_store_domains()
-    fetch_and_store_urls()
-    scheduler.start()
+    try:
+        scheduler = BlockingScheduler()
+        fetch_and_store_ips()
+        fetch_and_store_domains()
+        fetch_and_store_urls()
+        settings_doc = settings_collection.find_one({"_id": 1})
+        update_interval = settings_doc["update_interval"] if settings_doc else 1
+        automatic_update = settings_doc["enable_automatic_update"] if settings_doc else True
+        logging.info(automatic_update)
+        if automatic_update:
+            scheduler.add_job(fetch_and_store_ips, 'interval', minutes=update_interval)
+            scheduler.add_job(fetch_and_store_domains, 'interval', minutes=update_interval)
+            scheduler.add_job(fetch_and_store_urls, 'interval', minutes=update_interval)
+            scheduler.start()
+        else:
+            scheduler.add_job(listen_for_updates, 'interval', minutes=10)
+            scheduler.start()
+        threading.Thread(target=listen_for_updates, daemon=True).start()
+    except Exception as e:
+        logging.error(f"Error : {e}")

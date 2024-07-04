@@ -3,14 +3,13 @@ import os
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request, Form, HTTPException, Depends, Query, File, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials, APIKeyHeader
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from fastapi.middleware.cors import CORSMiddleware
-from pymongo import MongoClient
 from pydantic import BaseModel
-from bson import ObjectId
+from pymongo import MongoClient
 from starlette.status import HTTP_401_UNAUTHORIZED
 
 load_dotenv()
@@ -35,6 +34,7 @@ api_key_collection = db["api_keys"]
 ip_score_collection = db["ip_scores"]
 domain_score_collection = db["domain_scores"]
 url_score_collection = db["url_scores"]
+settings_collection = db["settings"]
 
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
@@ -45,6 +45,11 @@ app.mount("/uploads", StaticFiles(directory=UPLOAD_FOLDER), name="uploads")
 class APIKeyModel(BaseModel):
     api_key: str
     user_id: str
+
+
+class SettingsModel(BaseModel):
+    enable_automatic_update: bool
+    update_interval: int
 
 
 origins = [
@@ -197,6 +202,21 @@ async def save_api_key(api_key_model: APIKeyModel):
     return {"id": str(result.inserted_id)}
 
 
+@app.post("/update_settings")
+async def update_settings(settings_model: SettingsModel):
+    document = {
+        '$set': {
+            '_id': 1,
+            'enable_automatic_update': settings_model.enable_automatic_update,
+            'update_interval': settings_model.update_interval
+        }
+    }
+
+    result = settings_collection.update_one({'_id': 1}, document, upsert=True)
+
+    return {"id": str(result.upserted_id)}
+
+
 @app.get("/admin", response_class=HTMLResponse)
 async def admin_page(request: Request):
     """, credentials: HTTPBasicCredentials = Depends(security)):"""
@@ -206,10 +226,13 @@ async def admin_page(request: Request):
     url_url_dict = get_url_url_dict()
     last_updated_doc = meta_collection.find_one({"_id": "last_updated"})
     last_updated = last_updated_doc["timestamp"] if last_updated_doc else None
+    settings_doc = settings_collection.find_one({"_id": 1})
+    update_interval = settings_doc["update_interval"] if settings_doc else 1
+    automatic_update = settings_doc["enable_automatic_update"] if settings_doc else True
 
     return templates.TemplateResponse("admin.html",
                                       {"request": request, "ip_urls": ip_url_dict, "domain_urls": domain_url_dict,
-                                       "url_urls": url_url_dict, "last_updated": last_updated})
+                                       "url_urls": url_url_dict, "last_updated": last_updated, "update_interval": update_interval, "automatic_update": automatic_update})
 
 
 @app.get("/login", response_class=HTMLResponse)
