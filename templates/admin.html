@@ -577,9 +577,36 @@
                 updateSettings();
             }
 
+            document.getElementById("updateDatabase").onclick = function () {
+                updateNow();
+            }
+
             const automatic_update = "{{ automatic_update }}";
             console.log(automatic_update)
             document.getElementById("enableAutomaticUpdate").checked = automatic_update === "True";
+
+            async function updateNow() {
+                try {
+                    const response = await fetch('/update_now', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+
+                        })
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Failed to send update request');
+                    }
+
+                    const result = await response.json();
+                    console.log('Database updated!');
+                } catch (error) {
+                    console.error('Error:', error);
+                }
+            }
 
             async function updateSettings() {
                 const automaticUpdate = document.getElementById("enableAutomaticUpdate").checked;

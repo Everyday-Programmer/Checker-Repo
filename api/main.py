@@ -12,6 +12,8 @@ from pydantic import BaseModel
 from pymongo import MongoClient
 from starlette.status import HTTP_401_UNAUTHORIZED
 
+from utils import fetch_and_store_ips, fetch_and_store_domains, fetch_and_store_urls
+
 load_dotenv()
 
 app = FastAPI()
@@ -215,6 +217,13 @@ async def update_settings(settings_model: SettingsModel):
     result = settings_collection.update_one({'_id': 1}, document, upsert=True)
 
     return {"id": str(result.upserted_id)}
+
+@app.post("/update_now")
+async def update_now():
+    fetch_and_store_ips()
+    fetch_and_store_domains()
+    fetch_and_store_urls()
+    return {"msg": "Updated Successfully!"}
 
 
 @app.get("/admin", response_class=HTMLResponse)

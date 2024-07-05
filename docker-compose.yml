@@ -10,6 +10,7 @@ services:
       - "8000:8000"
     volumes:
       - ./uploads:/app/uploads
+      - utils-volume:/app
     depends_on:
       - mongodb
     env_file:
@@ -26,6 +27,7 @@ services:
       - mongodb
     volumes:
       - ./uploads:/app/uploads
+      - utils-volume:/app
     env_file:
       - .env
     networks:
@@ -44,6 +46,7 @@ services:
 
 volumes:
   mongo-data:
+  utils-volume:
 
 networks:
   mynetwork:
