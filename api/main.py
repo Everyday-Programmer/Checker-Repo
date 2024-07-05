@@ -218,12 +218,16 @@ async def update_settings(settings_model: SettingsModel):
 
     return {"id": str(result.upserted_id)}
 
+
 @app.post("/update_now")
 async def update_now():
-    fetch_and_store_ips()
-    fetch_and_store_domains()
-    fetch_and_store_urls()
-    return {"msg": "Updated Successfully!"}
+    try:
+        fetch_and_store_ips()
+        fetch_and_store_domains()
+        fetch_and_store_urls()
+        return {"msg": "Updated request sent successfully!"}
+    except:
+        return {"msg": "There was an error while updating database"}
 
 
 @app.get("/admin", response_class=HTMLResponse)
@@ -241,7 +245,8 @@ async def admin_page(request: Request):
 
     return templates.TemplateResponse("admin.html",
                                       {"request": request, "ip_urls": ip_url_dict, "domain_urls": domain_url_dict,
-                                       "url_urls": url_url_dict, "last_updated": last_updated, "update_interval": update_interval, "automatic_update": automatic_update})
+                                       "url_urls": url_url_dict, "last_updated": last_updated,
+                                       "update_interval": update_interval, "automatic_update": automatic_update})
 
 
 @app.get("/login", response_class=HTMLResponse)
