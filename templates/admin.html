@@ -216,6 +216,8 @@
             border-top-left-radius: 16px;
             border: 1px none #ccc;
             border-left-style: solid;
+            height: fit-content;
+            min-height: 100vh;
         }
         label {
             color: #f0f0f0;
@@ -422,7 +424,7 @@
                     <h3 style="width: 100%; text-align: center;">Generate API Key</h3>
                     <div style="text-align: center;">
                         <label for="apiKey">API Key:</label><br>
-                        <input type="text" id="apiKey" readonly><br><br>
+                        <input type="text" id="apiKey" readonly value="{{ api_key }}"><br><br>
                         <div style="width: 40%; display: grid; grid-template-columns: 50% 50%; margin: auto;">
                             <input type="submit" id="generateAPI" value="Generate API">
                             <input type="button" id="copyAPI" value="Copy API Key" disabled>
@@ -452,7 +454,7 @@
                 </div>
             </div>
             <div id="rightPanel">
-                <aside class="aside" style="height: 80vh">
+                <aside class="aside">
                     <h2 style="text-align: center;">Add new data source to database</h2>
                     <h4 style="text-align: center;">Add URL</h4>
                     <form action="/admin/add_url" method="post">
@@ -494,6 +496,8 @@
             const url = new URL(window.location.href);
             const params = new URLSearchParams(url.search);
             const s = params.get('s');
+
+            console.log("{{ api_key }}")
 
             if (s === "success") {
                 document.getElementById("successText").style.display = "block";

@@ -14,15 +14,15 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 load_dotenv()
 
 client = MongoClient(os.getenv('MONGO_DB'))
-db = client["checker"]
-collection = db["ip_addresses"]
-domain_collection = db["domains"]
-url_collection = db["urls"]
-meta_collection = db["metadata"]
-ip_url_collection = db["ip_urls"]
-domain_url_collection = db["domain_urls"]
-url_url_collection = db["url_urls"]
-settings_collection = db["settings"]
+db = client[os.getenv('DB')]
+collection = db[os.getenv('IP_COLLECTION')]
+domain_collection = db[os.getenv('DOMAIN_COLLECTION')]
+url_collection = db[os.getenv('URL_COLLECTION')]
+meta_collection = db[os.getenv('META_COLLECTION')]
+ip_url_collection = db[os.getenv('IP_URLS_COLLECTION')]
+domain_url_collection = db[os.getenv('DOMAIN_URLS_COLLECTION')]
+url_urls_collection = db[os.getenv('URL_URLS_COLLECTION')]
+settings_collection = db[os.getenv('SETTINGS_COLLECTION')]
 
 def get_url_dict():
     url_dict = {}
@@ -39,7 +39,7 @@ def get_domain_url_dict():
 
 def get_url_url_dict():
     url_dict = {}
-    for entry in url_url_collection.find():
+    for entry in url_urls_collection.find():
         url_dict[entry["source"]] = entry["url"]
     return url_dict
 

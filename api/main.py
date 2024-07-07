@@ -24,19 +24,19 @@ UPLOAD_FOLDER = 'uploads'
 API_KEY_HEADER = APIKeyHeader(name="X-API-Key")
 
 client = MongoClient(os.getenv('MONGO_DB'))
-db = client["checker"]
-collection = db["ip_addresses"]
-domain_collection = db["domains"]
-url_collection = db["urls"]
-meta_collection = db["metadata"]
-ip_url_collection = db["ip_urls"]
-domain_url_collection = db["domain_urls"]
-url_urls_collection = db["url_urls"]
-api_key_collection = db["api_keys"]
-ip_score_collection = db["ip_scores"]
-domain_score_collection = db["domain_scores"]
-url_score_collection = db["url_scores"]
-settings_collection = db["settings"]
+db = client[os.getenv('DB')]
+collection = db[os.getenv('IP_COLLECTION')]
+domain_collection = db[os.getenv('DOMAIN_COLLECTION')]
+url_collection = db[os.getenv('URL_COLLECTION')]
+meta_collection = db[os.getenv('META_COLLECTION')]
+ip_url_collection = db[os.getenv('IP_URLS_COLLECTION')]
+domain_url_collection = db[os.getenv('DOMAIN_URLS_COLLECTION')]
+url_urls_collection = db[os.getenv('URL_URLS_COLLECTION')]
+api_key_collection = db[os.getenv('KEYS_COLLECTION')]
+ip_score_collection = db[os.getenv('IP_SCORES_COLLECTION')]
+domain_score_collection = db[os.getenv('DOMAIN_SCORES_COLLECTION')]
+url_score_collection = db[os.getenv('URL_SCORES_COLLECTION')]
+settings_collection = db[os.getenv('SETTINGS_COLLECTION')]
 
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
@@ -218,7 +218,6 @@ async def update_settings(settings_model: SettingsModel):
 
     return {"id": str(result.upserted_id)}
 
-
 @app.post("/update_now")
 async def update_now():
     try:
@@ -242,11 +241,12 @@ async def admin_page(request: Request):
     settings_doc = settings_collection.find_one({"_id": 1})
     update_interval = settings_doc["update_interval"] if settings_doc else 1
     automatic_update = settings_doc["enable_automatic_update"] if settings_doc else True
+    api_doc = api_key_collection.find_one({"user_id": "admin"})
+    api_key = api_doc["api_key"] if api_doc else ""
 
     return templates.TemplateResponse("admin.html",
                                       {"request": request, "ip_urls": ip_url_dict, "domain_urls": domain_url_dict,
-                                       "url_urls": url_url_dict, "last_updated": last_updated,
-                                       "update_interval": update_interval, "automatic_update": automatic_update})
+                                       "url_urls": url_url_dict, "last_updated": last_updated, "update_interval": update_interval, "automatic_update": automatic_update, "api_key": api_key})
 
 
 @app.get("/login", response_class=HTMLResponse)
