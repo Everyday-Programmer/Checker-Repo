@@ -1,5 +1,6 @@
 import ipaddress
 import os
+import httpx
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request, Form, HTTPException, Depends, Query, File, UploadFile
@@ -37,6 +38,7 @@ ip_score_collection = db[os.getenv('IP_SCORES_COLLECTION')]
 domain_score_collection = db[os.getenv('DOMAIN_SCORES_COLLECTION')]
 url_score_collection = db[os.getenv('URL_SCORES_COLLECTION')]
 settings_collection = db[os.getenv('SETTINGS_COLLECTION')]
+users_collection = db[os.getenv('USERS_COLLECTION')]
 
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
@@ -248,7 +250,6 @@ async def admin_page(request: Request):
                                       {"request": request, "ip_urls": ip_url_dict, "domain_urls": domain_url_dict,
                                        "url_urls": url_url_dict, "last_updated": last_updated, "update_interval": update_interval, "automatic_update": automatic_update, "api_key": api_key})
 
-
 @app.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request):
     return templates.TemplateResponse("login.html", {"request": request})
@@ -319,3 +320,47 @@ async def uploaded_file(filename: str):
     if os.path.exists(file_path):
         return FileResponse(file_path)
     return {"error": "File not found"}
+
+
+@app.get("/authenticate", response_class=HTMLResponse)
+async def authenticate_page(request: Request):
+    return templates.TemplateResponse("authenticate.html", {"request": request})
+
+
+@app.get("/auth/github")
+async def github_login():
+    github_client_id = os.getenv('GITHUB_CLIENT_ID')
+    redirect_uri = os.getenv('GITHUB_REDIRECT_URI')
+    github_authorize_url = f"https://github.com/login/oauth/authorize?client_id={github_client_id}&redirect_uri={redirect_uri}&scope=user"
+    return RedirectResponse(github_authorize_url)
+
+@app.get("/auth/github/callback")
+async def github_callback(request: Request, code: str = Query(...)):
+    github_client_id = os.getenv('GITHUB_CLIENT_ID')
+    github_client_secret = os.getenv('GITHUB_CLIENT_SECRET')
+    token_url = "https://github.com/login/oauth/access_token"
+    headers = {"Accept": "application/json"}
+    data = {
+        "client_id": github_client_id,
+        "client_secret": github_client_secret,
+        "code": code,
+    }
+    async with httpx.AsyncClient() as client:
+        response = await client.post(token_url, headers=headers, data=data)
+        response_data = response.json()
+        access_token = response_data.get("access_token")
+
+    if access_token:
+        user_info_url = "https://api.github.com/user"
+        headers = {"Authorization": f"Bearer {access_token}"}
+        async with httpx.AsyncClient() as client:
+            user_response = await client.get(user_info_url, headers=headers)
+            user_data = user_response.json()
+            username = user_data.get("login")
+            user_id = user_data.get("id")
+            user_image = user_data.get("avatar_url")
+            if username:
+                users_collection.insert_one({"username": username, "user_id": user_id, "user_image": user_image})
+                return templates.TemplateResponse("welcome.html", {"request": request, "username": username, "user_id": user_id, "user_data": user_data})
+
+    raise HTTPException(status_code=400, detail="Failed to authenticate with GitHub")
