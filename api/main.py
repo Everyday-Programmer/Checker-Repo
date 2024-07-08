@@ -1,4 +1,5 @@
 import ipaddress
+import logging
 import os
 import httpx
 
@@ -7,6 +8,7 @@ from fastapi import FastAPI, Request, Form, HTTPException, Depends, Query, File,
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials, APIKeyHeader
+from starlette.middleware.sessions import SessionMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
@@ -21,6 +23,8 @@ app = FastAPI()
 templates = Jinja2Templates(directory="templates")
 security = HTTPBasic()
 UPLOAD_FOLDER = 'uploads'
+
+app.add_middleware(SessionMiddleware, secret_key=os.getenv('SESSION_SECRET_KEY'))
 
 API_KEY_HEADER = APIKeyHeader(name="X-API-Key")
 
@@ -202,7 +206,7 @@ async def save_api_key(api_key_model: APIKeyModel):
     if not api_key:
         raise HTTPException(status_code=400, detail="API key is required")
 
-    result = api_key_collection.insert_one({"api_key": api_key, "user_id": api_key_model.user_id})
+    result = api_key_collection.insert_one({"api_key": api_key, "user_id": api_key_model.user_id, "valid": True})
     return {"id": str(result.inserted_id)}
 
 
@@ -219,6 +223,7 @@ async def update_settings(settings_model: SettingsModel):
     result = settings_collection.update_one({'_id': 1}, document, upsert=True)
 
     return {"id": str(result.upserted_id)}
+
 
 @app.post("/update_now")
 async def update_now():
@@ -248,7 +253,10 @@ async def admin_page(request: Request):
 
     return templates.TemplateResponse("admin.html",
                                       {"request": request, "ip_urls": ip_url_dict, "domain_urls": domain_url_dict,
-                                       "url_urls": url_url_dict, "last_updated": last_updated, "update_interval": update_interval, "automatic_update": automatic_update, "api_key": api_key})
+                                       "url_urls": url_url_dict, "last_updated": last_updated,
+                                       "update_interval": update_interval, "automatic_update": automatic_update,
+                                       "api_key": api_key})
+
 
 @app.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request):
@@ -334,6 +342,7 @@ async def github_login():
     github_authorize_url = f"https://github.com/login/oauth/authorize?client_id={github_client_id}&redirect_uri={redirect_uri}&scope=user"
     return RedirectResponse(github_authorize_url)
 
+
 @app.get("/auth/github/callback")
 async def github_callback(request: Request, code: str = Query(...)):
     github_client_id = os.getenv('GITHUB_CLIENT_ID')
@@ -351,6 +360,7 @@ async def github_callback(request: Request, code: str = Query(...)):
         access_token = response_data.get("access_token")
 
     if access_token:
+        request.session['access_token'] = access_token
         user_info_url = "https://api.github.com/user"
         headers = {"Authorization": f"Bearer {access_token}"}
         async with httpx.AsyncClient() as client:
@@ -359,8 +369,21 @@ async def github_callback(request: Request, code: str = Query(...)):
             username = user_data.get("login")
             user_id = user_data.get("id")
             user_image = user_data.get("avatar_url")
+            request.session['user_id'] = user_id
             if username:
                 users_collection.insert_one({"username": username, "user_id": user_id, "user_image": user_image})
-                return templates.TemplateResponse("welcome.html", {"request": request, "username": username, "user_id": user_id, "user_data": user_data})
+                return templates.TemplateResponse("welcome.html",
+                                                  {"request": request, "username": username, "user_id": user_id,
+                                                   "user_data": user_data})
 
     raise HTTPException(status_code=400, detail="Failed to authenticate with GitHub")
+
+
+@app.get("/api_user", response_class=HTMLResponse)
+async def api_user(request: Request):
+    if 'access_token' not in request.session or 'user_id' not in request.session:
+        return RedirectResponse(url="/authenticate")
+    user_id = request.session['user_id']
+    api_doc = api_key_collection.find_one({"user_id": f"{user_id}"})
+    api_key = api_doc["api_key"] if api_doc else ""
+    return templates.TemplateResponse("api_user.html", {"request": request, "api_key": api_key, "user_id": request.session['user_id']})

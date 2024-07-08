@@ -3,8 +3,295 @@
 <head>
     <meta charset="UTF-8">
     <title>IOC API</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            width: 100%;
+            height: 100vh;
+        }
+
+        .navbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: #333;
+            padding: 20px 20vw;
+        }
+
+        .logo a {
+            color: #1e69e1;
+            font-size: 32px;
+            cursor: pointer;
+            text-decoration: none;
+        }
+
+        .nav-links {
+            list-style: none;
+            display: flex;
+            margin: 0;
+            padding: 0;
+        }
+
+        .nav-links li {
+            margin-left: 20px;
+        }
+
+        .nav-links a {
+            color: #fff;
+            text-decoration: none;
+            font-size: 18px;
+        }
+
+        .nav-links a:hover {
+            color: #1e69e1;
+        }
+
+        .menu-toggle span {
+            background: #fff;
+            height: 3px;
+            width: 25px;
+            margin-bottom: 4px;
+            border-radius: 2px;
+        }
+
+        @media (max-width: 768px) {
+            .nav-links {
+                display: none;
+                flex-direction: column;
+                width: 100%;
+            }
+
+            .nav-links li {
+                margin: 10px 0;
+            }
+
+            .nav-links.active {
+                display: flex;
+            }
+        }
+        #createAPI {
+            background-color: #1e69e1;
+            padding: 16px;
+            color: #f0f0f0;
+            border-radius: 20px;
+            cursor: pointer;
+            width: max-content;
+        }
+
+        #createAPI:hover {
+            background-color: #f0f0f0;
+            color: #1e69e1;
+        }
+
+        #apiList h3 {
+            margin: 10px 10px 6px;
+        }
+
+        #apiList form {
+            margin-left: 10px;
+            margin-bottom: 6px;
+        }
+
+        #apiList h5 {
+            margin: 0 0 6px 10px;
+        }
+
+        #apiList li {
+            list-style-type: none;
+            border-radius: 16px;
+            padding: 1px;
+            margin: 10px;
+        }
+
+        #apiList form input[type=submit], #apiList button {
+            padding:5px 15px;
+            background:#fa4646;
+            border:0 none;
+            cursor:pointer;
+            -webkit-border-radius: 5px;
+            border-radius: 5px;
+            color: #f0f0f0;
+            font-size: 14px;
+            font-family: sans-serif;
+            font-weight: bold;
+        }
+
+        #apiList form input[type=submit]:hover, #apiList button:hover {
+            background:#f0f0f0;
+            cursor:pointer;
+            color: #fa4646;
+        }
+
+        #apiList button {
+            padding: 5px 15px;
+            background: #1e69e1;
+            border:0 none;
+            cursor:pointer;
+            -webkit-border-radius: 5px;
+            border-radius: 5px;
+            color: #f0f0f0;
+            font-size: 14px;
+            font-family: sans-serif;
+            font-weight: bold;
+        }
+
+        #apiList button:hover {
+            background: #f0f0f0;
+            cursor:pointer;
+            color: #1e69e1;
+        }
+
+        #APIGenerate input[type="text"]{
+            width: 40%;
+            height: 38px;
+            border-radius: 10px;
+            border: 1px solid #f0f0f0;
+            box-sizing: border-box;
+            padding: 8px;
+            font-family: Calibri,sans-serif;
+            font-size: large;
+        }
+        #APIGenerate input[type="submit"] {
+            background-color: #1e69e1;
+            width: fit-content;
+            height: 40px;
+            display: block;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            color: white;
+            text-align: center;
+            cursor: pointer;
+            font-size: medium;
+            margin: auto;
+            padding: 12px;
+        }
+        #APIGenerate input[type="submit"]:hover {
+            background-color: #f0f0f0;
+            color: #1e69e1;
+        }
+        #APIGenerate input[type="button"][disabled] {
+            background-color: rgba(113, 121, 124, 0.1);
+            color: white;
+            cursor: pointer;
+            border: none;
+            border-radius: 8px;
+        }
+        #APIGenerate input[type="button"][disabled]:hover {
+            background-color: rgba(113, 121, 124, 0.1);
+            color: white;
+        }
+    </style>
 </head>
 <body>
+    <nav class="navbar">
+        <div class="logo"><a href="index.html">IOC Checker</a></div>
+        <ul class="nav-links">
+            <li><a href="#">About</a></li>
+            <li><a href="#">Documentation</a></li>
+            <li><a href="#">Github</a></li>
+            <li><a href="#">Contact</a></li>
+        </ul>
+    </nav>
+    <section>
+        <h3 style="text-align: center">Your API keys</h3>
+        <div style="width: 50%; margin: auto;">
+            <h4 id="createAPI">+ Create API Key</h4>
+            {% if api_key == "" %}
+                <div id="APIGenerate">
+                    <h3 style="width: 100%; text-align: center;">Generate API Key</h3>
+                    <div style="text-align: center;">
+                        <label for="apiKey">API Key:</label><br><br>
+                        <input type="text" id="apiKey" readonly><br><br>
+                        <div style="width: 40%; display: grid; grid-template-columns: 50% 50%; margin: auto;">
+                            <input type="submit" id="generateAPI" value="Generate API">
+                            <input type="button" id="copyAPI" value="Copy API Key" disabled>
+                        </div>
+                        <p id="apiCopied" style="display: none; color: chartreuse;">API Key copied to clipboard!</p>
+                    </div>
+                </div>
+            {% endif %}
+            <div id="apiList">
+                <ul>
+                    <li>
+                        <h3>{{ api_key }}</h3>
+                        <p style="margin: 0 0 10px 10px;">{{ usage }}/{{ limit }}</p>
+                        <button style="margin-left: 10px;">Copy API key</button>
+                        <button style="margin-left: 10px;">Increase Limit</button>
+                        <form action="/deactivate_api" method="post" style="display: inline-block;">
+                            <input type="hidden" name="api_key" value="{{ api_key }}">
+                            <input style="cursor: pointer;" type="submit" value="Deactivate API">
+                        </form>
+                    </li>
+                </ul>
+            </div>
+            <div style="cursor: pointer;">
+                <h3 style="margin-bottom: 0;">API Usage</h3>
+                <h6 style="margin-top: 0;">View the usage of your api keys</h6>
+            </div>
+            <div style="cursor: pointer">
+                <h3 style="margin-bottom: 0;">API Keys</h3>
+                <h6 style="margin-top: 0;">View and manage your api keys</h6>
+            </div>
+            <p>{{ user_id }}</p>
+            <p>{{ api_key }}</p>
+        </div>
+    </section>
+    <script>
+        document.getElementById("createAPI").onclick = function () {
+            if (document.getElementById("APIGenerate").style.display.includes("block")) {
+                document.getElementById("APIGenerate").style.display = "none";
+                document.getElementById("createAPI").innerText = "+ Create API key";
+            } else {
+                document.getElementById("APIGenerate").style.display = "block";
+                document.getElementById("createAPI").innerText = "❌ Close";
+            }
+        }
 
+        if ("{{ api_key }}" === "") {
+            document.getElementById("generateAPI").onclick = function () {
+                generateApiKey();
+            }
+        }
+
+        function generateApiKey() {
+            const apiKeyLength = 16;
+            const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+            let apiKey = '';
+
+            for (let i = 0; i < apiKeyLength; i++) {
+                const randomIndex = Math.floor(Math.random() * characters.length);
+                apiKey += characters[randomIndex];
+            }
+
+            document.getElementById('apiKey').value = apiKey;
+            sendApiKey(apiKey, "{{ user_id }}");
+        }
+
+        async function sendApiKey(apiKey, userId) {
+            try {
+                const response = await fetch('/api_generated', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        api_key: apiKey,
+                        user_id: userId
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to save API key');
+                }
+
+                const result = await response.json();
+                document.getElementById("copyAPI").disabled = false;
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+    </script>
 </body>
 </html>
