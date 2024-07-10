@@ -363,6 +363,7 @@
                     <li><p style="cursor: pointer;" id="showUrlList">Urls List ({{ url_urls | length }})</p></li>
                     <li><p style="cursor: pointer;" id="showGenerateAPI">Generate API Key</p></li>
                     <li><p style="cursor: pointer;" id="showSettings">Update Preference</p></li>
+                    <li><p style="cursor: pointer;" id="showAPISettings">API Settings</p></li>
                 </ul>
             </aside>
         </div>
@@ -452,6 +453,16 @@
                         <button style="margin-top: 30px; width: 100px;" id="saveSettings">Save</button>
                     </div>
                 </div>
+                <div id="APISettings" style="display: none;">
+                    <h3 style="width: 100%; text-align: center;">API Preference</h3>
+                    <div style="width: 90%; display: grid; grid-template-columns: 50% 50%; margin: auto; text-align: center">
+                        <label for="apiLimit">Default client API limit</label>
+                        <input style="width: 50%;" type="number" id="apiLimit" name="apiLimit" value="{{ api_limit }}">
+                    </div>
+                    <div style="width: 50%; margin: auto">
+                        <button style="margin-top: 30px; width: 100px;" id="saveAPISettings">Save</button>
+                    </div>
+                </div>
             </div>
             <div id="rightPanel">
                 <aside class="aside">
@@ -497,8 +508,6 @@
             const params = new URLSearchParams(url.search);
             const s = params.get('s');
 
-            console.log("{{ api_key }}")
-
             if (s === "success") {
                 document.getElementById("successText").style.display = "block";
             } else {
@@ -510,11 +519,13 @@
                 document.getElementById("UrlList").style.display = "none";
                 document.getElementById("Settings").style.display = "none";
                 document.getElementById("APIGenerate").style.display = "none";
+                document.getElementById("APISettings").style.display = "none";
                 document.getElementById("showIPList").classList.add("active");
                 document.getElementById("showDomainList").classList.remove("active");
                 document.getElementById("showUrlList").classList.remove("active");
                 document.getElementById("showGenerateAPI").classList.remove("active");
                 document.getElementById("showSettings").classList.remove("active");
+                document.getElementById("showAPISettings").classList.remove("active");
             }
 
             document.getElementById("showDomainList").onclick = function() {
@@ -522,12 +533,14 @@
                 document.getElementById("IPList").style.display = "none";
                 document.getElementById("UrlList").style.display = "none";
                 document.getElementById("APIGenerate").style.display = "none";
+                document.getElementById("APISettings").style.display = "none";
                 document.getElementById("showDomainList").classList.add("active");
                 document.getElementById("Settings").style.display = "none";
                 document.getElementById("showIPList").classList.remove("active");
                 document.getElementById("showUrlList").classList.remove("active");
                 document.getElementById("showGenerateAPI").classList.remove("active");
                 document.getElementById("showSettings").classList.remove("active");
+                document.getElementById("showAPISettings").classList.remove("active");
             }
 
             document.getElementById("showUrlList").onclick = function() {
@@ -536,11 +549,13 @@
                 document.getElementById("APIGenerate").style.display = "none";
                 document.getElementById("DomainList").style.display = "none";
                 document.getElementById("Settings").style.display = "none";
+                document.getElementById("APISettings").style.display = "none";
                 document.getElementById("showUrlList").classList.add("active");
                 document.getElementById("showIPList").classList.remove("active");
                 document.getElementById("showDomainList").classList.remove("active");
                 document.getElementById("showGenerateAPI").classList.remove("active");
                 document.getElementById("showSettings").classList.remove("active");
+                document.getElementById("showAPISettings").classList.remove("active");
             }
 
             document.getElementById("showGenerateAPI").onclick = function() {
@@ -549,11 +564,13 @@
                 document.getElementById("IPList").style.display = "none";
                 document.getElementById("DomainList").style.display = "none";
                 document.getElementById("Settings").style.display = "none";
+                document.getElementById("APISettings").style.display = "none";
                 document.getElementById("showGenerateAPI").classList.add("active");
                 document.getElementById("showUrlList").classList.remove("active");
                 document.getElementById("showIPList").classList.remove("active");
                 document.getElementById("showDomainList").classList.remove("active");
                 document.getElementById("showSettings").classList.remove("active");
+                document.getElementById("showAPISettings").classList.remove("active");
             }
 
             document.getElementById("showSettings").onclick = function() {
@@ -562,7 +579,24 @@
                 document.getElementById("DomainList").style.display = "none";
                 document.getElementById("UrlList").style.display = "none";
                 document.getElementById("APIGenerate").style.display = "none";
+                document.getElementById("APISettings").style.display = "none";
                 document.getElementById("showSettings").classList.add("active");
+                document.getElementById("showIPList").classList.remove("active");
+                document.getElementById("showDomainList").classList.remove("active");
+                document.getElementById("showUrlList").classList.remove("active");
+                document.getElementById("showGenerateAPI").classList.remove("active");
+                document.getElementById("showAPISettings").classList.remove("active");
+            }
+
+            document.getElementById("showAPISettings").onclick = function() {
+                document.getElementById("APISettings").style.display = "block";
+                document.getElementById("IPList").style.display = "none";
+                document.getElementById("DomainList").style.display = "none";
+                document.getElementById("UrlList").style.display = "none";
+                document.getElementById("APIGenerate").style.display = "none";
+                document.getElementById("Settings").style.display = "none";
+                document.getElementById("showAPISettings").classList.add("active");
+                document.getElementById("showSettings").classList.remove("active");
                 document.getElementById("showIPList").classList.remove("active");
                 document.getElementById("showDomainList").classList.remove("active");
                 document.getElementById("showUrlList").classList.remove("active");
@@ -585,8 +619,11 @@
                 updateNow();
             }
 
+            document.getElementById("saveAPISettings").onclick = function () {
+                updateAPISettings();
+            }
+
             const automatic_update = "{{ automatic_update }}";
-            console.log(automatic_update)
             document.getElementById("enableAutomaticUpdate").checked = automatic_update === "True";
 
             async function updateNow() {
@@ -607,6 +644,7 @@
 
                     const result = await response.json();
                     console.log('Database updated!');
+                    alert("Database updated!")
                 } catch (error) {
                     console.error('Error:', error);
                 }
@@ -633,19 +671,36 @@
 
                     const result = await response.json();
                     console.log('Settings updated!');
+                    alert("Database settings updated!");
                 } catch (error) {
                     console.error('Error:', error);
                 }
             }
 
-            document.addEventListener('DOMContentLoaded', () => {
-                const storedUsername = localStorage.getItem('username');
-                const storedPassword = localStorage.getItem('password');
+            async function updateAPISettings() {
+                const apiLimit = parseInt(document.getElementById("apiLimit").value);
+                try {
+                    const response = await fetch('/update_api_settings', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            default_api_limit: apiLimit
+                        })
+                    });
 
-                /*if (storedUsername !== "{{ admin }}" && storedPassword !== "{{ password }}") {
-                    window.location = "login";
-                }*/
-            });
+                    if (!response.ok) {
+                        throw new Error('Failed to save API settings');
+                    }
+
+                    const result = await response.json();
+                    console.log('API settings updated!');
+                    alert("API settings updated!");
+                } catch (error) {
+                    console.error('Error:', error);
+                }
+            }
 
             function generateApiKey() {
                 const apiKeyLength = 16;

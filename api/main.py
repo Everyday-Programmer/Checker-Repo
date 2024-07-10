@@ -12,7 +12,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
-from pymongo import MongoClient
+from pymongo import MongoClient, ASCENDING
 from starlette.status import HTTP_401_UNAUTHORIZED
 
 from utils import fetch_and_store_ips, fetch_and_store_domains, fetch_and_store_urls
@@ -44,6 +44,14 @@ url_score_collection = db[os.getenv('URL_SCORES_COLLECTION')]
 settings_collection = db[os.getenv('SETTINGS_COLLECTION')]
 users_collection = db[os.getenv('USERS_COLLECTION')]
 
+collection.create_index([("ip", ASCENDING)])
+domain_collection.create_index([("domain", ASCENDING)])
+url_collection.create_index([("url", ASCENDING)])
+ip_score_collection.create_index([("url", ASCENDING)])
+domain_score_collection.create_index([("url", ASCENDING)])
+url_score_collection.create_index([("url", ASCENDING)])
+api_key_collection.create_index([("api_key", ASCENDING), ("user_id", ASCENDING)])
+
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 
@@ -58,6 +66,10 @@ class APIKeyModel(BaseModel):
 class SettingsModel(BaseModel):
     enable_automatic_update: bool
     update_interval: int
+
+
+class APISettingsModel(BaseModel):
+    default_api_limit: int
 
 
 origins = [
@@ -89,13 +101,17 @@ def authenticate(credentials: HTTPBasicCredentials):
 
 def validate_api_key(api_key: str = Depends(API_KEY_HEADER)):
     result = api_key_collection.find_one({"api_key": api_key})
-    if not result:
+    if not result or not result["valid"] and result["limit"] <= result["usage"] and result["user_id"] != "admin":
         raise HTTPException(
             status_code=HTTP_401_UNAUTHORIZED,
             detail="Invalid API Key",
             headers={"WWW-Authenticate": "API key"},
         )
-
+    else:
+        api_key_collection.update_one({"api_key": api_key}, {"$inc": {"usage": 1}})
+        result1 = api_key_collection.find_one({"api_key": api_key})
+        if result["limit"] <= result1["usage"]:
+            api_key_collection.update_one({"api_key": api_key}, {"$set": {"valid": False}})
 
 def get_url_dict():
     url_dict = {}
@@ -152,7 +168,6 @@ async def ip_check(ip: str = Query(..., description="IP address to check"), api_
 
     return {"exists": "False", "last_updated": last_updated}
 
-
 @app.get("/domainCheck/")
 async def domain_check(domain: str = Query(..., description="Domain to check"),
                        api_key: str = Depends(validate_api_key)):
@@ -176,7 +191,6 @@ async def domain_check(domain: str = Query(..., description="Domain to check"),
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Internal Server Error {e}")
 
-
 @app.get("/urlCheck/")
 async def url_check(url: str = Query(..., description="Url to check"), api_key: str = Depends(validate_api_key)):
     try:
@@ -192,7 +206,8 @@ async def url_check(url: str = Query(..., description="Url to check"), api_key: 
         last_updated_doc = meta_collection.find_one({"_id": "last_updated"})
         last_updated = last_updated_doc["timestamp"] if last_updated_doc else "N/A"
         if result:
-            return {"exists": "True", "url": result["url"], "source": result["source"], "last_updated": last_updated,
+            return {"exists": "True", "url": result["url"], "source": result["source"],
+                    "last_updated": last_updated,
                     "count": count}
         else:
             return {"exists": "False", "last_updated": last_updated}
@@ -206,7 +221,11 @@ async def save_api_key(api_key_model: APIKeyModel):
     if not api_key:
         raise HTTPException(status_code=400, detail="API key is required")
 
-    result = api_key_collection.insert_one({"api_key": api_key, "user_id": api_key_model.user_id, "valid": True})
+    api_settings_doc = settings_collection.find_one({"_id": 2})
+    default_api_limit = api_settings_doc["default_api_limit"] if api_settings_doc else 100
+
+    result = api_key_collection.insert_one({"api_key": api_key, "user_id": api_key_model.user_id,
+                                            "limit": default_api_limit, "usage": 0, "valid": True})
     return {"id": str(result.inserted_id)}
 
 
@@ -224,6 +243,18 @@ async def update_settings(settings_model: SettingsModel):
 
     return {"id": str(result.upserted_id)}
 
+@app.post("/update_api_settings")
+async def update_settings(api_settings_model: APISettingsModel):
+    document = {
+        '$set': {
+            '_id': 2,
+            'default_api_limit': api_settings_model.default_api_limit
+        }
+    }
+
+    result = settings_collection.update_one({'_id': 2}, document, upsert=True)
+
+    return {"id": str(result.upserted_id)}
 
 @app.post("/update_now")
 async def update_now():
@@ -252,8 +283,10 @@ async def admin_page(request: Request):
     last_updated_doc = meta_collection.find_one({"_id": "last_updated"})
     last_updated = last_updated_doc["timestamp"] if last_updated_doc else None
     settings_doc = settings_collection.find_one({"_id": 1})
+    api_settings_doc = settings_collection.find_one({"_id": 2})
     update_interval = settings_doc["update_interval"] if settings_doc else 1
     automatic_update = settings_doc["enable_automatic_update"] if settings_doc else True
+    default_api_limit = api_settings_doc["default_api_limit"] if api_settings_doc else 100
     api_doc = api_key_collection.find_one({"user_id": "admin"})
     api_key = api_doc["api_key"] if api_doc else ""
 
@@ -261,7 +294,7 @@ async def admin_page(request: Request):
                                       {"request": request, "ip_urls": ip_url_dict, "domain_urls": domain_url_dict,
                                        "url_urls": url_url_dict, "last_updated": last_updated,
                                        "update_interval": update_interval, "automatic_update": automatic_update,
-                                       "api_key": api_key, "admin": admin, "password": password})
+                                       "api_key": api_key, "admin": admin, "password": password, "api_limit": default_api_limit})
 
 
 @app.get("/admin/login", response_class=HTMLResponse)
@@ -393,7 +426,14 @@ async def github_callback(request: Request, code: str = Query(...)):
             user_image = user_data.get("avatar_url")
             request.session['user_id'] = user_id
             if username:
-                users_collection.insert_one({"username": username, "user_id": user_id, "user_image": user_image})
+                user_doc = {
+                    '$set': {
+                        "username": username,
+                        "user_id": user_id,
+                        "user_image": user_image
+                    }
+                }
+                users_collection.update_one({'user_id': user_id}, user_doc, upsert=True)
                 return templates.TemplateResponse("welcome.html",
                                                   {"request": request, "username": username, "user_id": user_id,
                                                    "user_data": user_data})
@@ -404,8 +444,11 @@ async def github_callback(request: Request, code: str = Query(...)):
 @app.get("/api_user", response_class=HTMLResponse)
 async def api_user(request: Request):
     if 'access_token' not in request.session or 'user_id' not in request.session:
-        return RedirectResponse(url="/authenticate")
+        return RedirectResponse(url="/login")
     user_id = request.session['user_id']
     api_doc = api_key_collection.find_one({"user_id": f"{user_id}"})
     api_key = api_doc["api_key"] if api_doc else ""
-    return templates.TemplateResponse("api_user.html", {"request": request, "api_key": api_key, "user_id": request.session['user_id']})
+    limit = api_doc["limit"] if api_doc else 100
+    usage = api_doc["usage"] if api_doc else 0
+
+    return templates.TemplateResponse("api_user.html", {"request": request, "api_key": api_key, "limit": limit, "usage": usage, "user_id": request.session['user_id']})

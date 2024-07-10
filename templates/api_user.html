@@ -152,7 +152,7 @@
             font-family: Calibri,sans-serif;
             font-size: large;
         }
-        #APIGenerate input[type="submit"] {
+        #APIGenerate input[type="submit"], input[type="button"] {
             background-color: #1e69e1;
             width: fit-content;
             height: 40px;
@@ -167,7 +167,7 @@
             margin: auto;
             padding: 12px;
         }
-        #APIGenerate input[type="submit"]:hover {
+        #APIGenerate input[type="submit"]:hover, input[type="button"]:hover {
             background-color: #f0f0f0;
             color: #1e69e1;
         }
@@ -197,7 +197,7 @@
     <section>
         <h3 style="text-align: center">Your API keys</h3>
         <div style="width: 50%; margin: auto;">
-            <h4 id="createAPI">+ Create API Key</h4>
+            <h4 id="createAPI" hidden>+ Create API Key</h4>
             {% if api_key == "" %}
                 <div id="APIGenerate">
                     <h3 style="width: 100%; text-align: center;">Generate API Key</h3>
@@ -212,6 +212,7 @@
                     </div>
                 </div>
             {% endif %}
+            {% if api_key != "" %}
             <div id="apiList">
                 <ul>
                     <li>
@@ -226,6 +227,7 @@
                     </li>
                 </ul>
             </div>
+            {% endif %}
             <div style="cursor: pointer;">
                 <h3 style="margin-bottom: 0;">API Usage</h3>
                 <h6 style="margin-top: 0;">View the usage of your api keys</h6>
@@ -247,6 +249,10 @@
                 document.getElementById("APIGenerate").style.display = "block";
                 document.getElementById("createAPI").innerText = "❌ Close";
             }
+        }
+
+        document.getElementById("copyAPI").onclick = function () {
+            copyToClipboard()
         }
 
         if ("{{ api_key }}" === "") {
@@ -292,6 +298,17 @@
                 console.error('Error:', error);
             }
         }
+
+        async function copyToClipboard() {
+                const apiKey = document.getElementById('apiKey').value;
+
+                try {
+                    await navigator.clipboard.writeText(apiKey);
+                    document.getElementById('apiCopied').style.display = "block";
+                } catch (err) {
+                    console.error('Failed to copy: ', err);
+                }
+            }
     </script>
 </body>
 </html>
