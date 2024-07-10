@@ -251,16 +251,21 @@ async def admin_page(request: Request):
     api_doc = api_key_collection.find_one({"user_id": "admin"})
     api_key = api_doc["api_key"] if api_doc else ""
 
+    admin = os.getenv('ADMIN_USERNAME')
+    password = os.getenv('ADMIN_PASSWORD')
+
     return templates.TemplateResponse("admin.html",
                                       {"request": request, "ip_urls": ip_url_dict, "domain_urls": domain_url_dict,
                                        "url_urls": url_url_dict, "last_updated": last_updated,
                                        "update_interval": update_interval, "automatic_update": automatic_update,
-                                       "api_key": api_key})
+                                       "api_key": api_key, "admin": admin, "password": password})
 
 
 @app.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request):
-    return templates.TemplateResponse("login.html", {"request": request})
+    admin = os.getenv('ADMIN_USERNAME')
+    password = os.getenv('ADMIN_PASSWORD')
+    return templates.TemplateResponse("login.html", {"request": request, "admin": admin, "password": password})
 
 
 @app.post("/login", response_class=HTMLResponse)
