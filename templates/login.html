@@ -11,7 +11,7 @@
     </head>
     <body>
         <h2>Login</h2>
-        <form action="/login" method="post" id="loginForm">
+        <form action="/admin/login" method="post" id="loginForm">
             <label for="username">Username:</label>
             <input type="text" id="username" name="username" required><br><br>
             <label for="password">Password:</label>
@@ -22,7 +22,7 @@
             <p style="color: red;">{{ error }}</p>
         {% endif %}
         <script>
-            document.addEventListener('DOMContentLoaded', () => {
+            /*document.addEventListener('DOMContentLoaded', () => {
                 const loginForm = document.getElementById('loginForm');
 
                 loginForm.addEventListener('submit', (e) => {
@@ -45,7 +45,7 @@
                 if (storedUsername === "{{ admin }}" && storedPassword === "{{ password }}") {
                     window.location = "admin";
                 }
-            });
+            });*/
         </script>
     </body>
 </html>

@@ -240,6 +240,12 @@ async def update_now():
 async def admin_page(request: Request):
     """, credentials: HTTPBasicCredentials = Depends(security)):"""
     #authenticate(credentials)
+    admin = os.getenv('ADMIN_USERNAME')
+    password = os.getenv('ADMIN_PASSWORD')
+
+    if 'admin' not in request.session or 'password' not in request.session or request.session['admin'] != admin or request.session['password'] != password:
+        return RedirectResponse(url="/admin/login")
+
     ip_url_dict = get_url_dict()
     domain_url_dict = get_domain_url_dict()
     url_url_dict = get_url_url_dict()
@@ -251,9 +257,6 @@ async def admin_page(request: Request):
     api_doc = api_key_collection.find_one({"user_id": "admin"})
     api_key = api_doc["api_key"] if api_doc else ""
 
-    admin = os.getenv('ADMIN_USERNAME')
-    password = os.getenv('ADMIN_PASSWORD')
-
     return templates.TemplateResponse("admin.html",
                                       {"request": request, "ip_urls": ip_url_dict, "domain_urls": domain_url_dict,
                                        "url_urls": url_url_dict, "last_updated": last_updated,
@@ -261,17 +264,31 @@ async def admin_page(request: Request):
                                        "api_key": api_key, "admin": admin, "password": password})
 
 
-@app.get("/login", response_class=HTMLResponse)
+@app.get("/admin/login", response_class=HTMLResponse)
 async def login_page(request: Request):
     admin = os.getenv('ADMIN_USERNAME')
     password = os.getenv('ADMIN_PASSWORD')
-    return templates.TemplateResponse("login.html", {"request": request, "admin": admin, "password": password})
+
+    if 'admin' in request.session and 'password' in request.session and request.session['admin'] == admin and request.session['password'] == password:
+        return RedirectResponse(url="/admin")
+
+    return templates.TemplateResponse("login.html", {"request": request})
 
 
-@app.post("/login", response_class=HTMLResponse)
+@app.post("/admin/login", response_class=HTMLResponse)
 async def login(request: Request, username: str = Form(...), password: str = Form(...)):
-    credentials = HTTPBasicCredentials(username=username, password=password)
-    authenticate(credentials)
+    admin1 = os.getenv('ADMIN_USERNAME')
+    password1 = os.getenv('ADMIN_PASSWORD')
+
+    logging.info(f"{admin1} : {password1}")
+    logging.info(f"{username} : {password}")
+
+    if admin1 != username and password1 != password:
+        return RedirectResponse(url="/admin/login", status_code=302)
+
+
+    request.session['admin'] = username
+    request.session['password'] = password
     return RedirectResponse(url="/admin", status_code=302)
 
 
@@ -335,7 +352,7 @@ async def uploaded_file(filename: str):
     return {"error": "File not found"}
 
 
-@app.get("/authenticate", response_class=HTMLResponse)
+@app.get("/login", response_class=HTMLResponse)
 async def authenticate_page(request: Request):
     return templates.TemplateResponse("authenticate.html", {"request": request})
 
