@@ -6,3 +6,4 @@ apscheduler
 motor
 itsdangerous
 aioredis
+gunicorn
