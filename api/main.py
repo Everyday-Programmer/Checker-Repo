@@ -201,7 +201,6 @@ async def ip_check(ip: str = Query(..., description="IP address to check"), api_
         "exists": "False",
         "last_updated": last_updated
     }
-    await set_cache(cache_key, response)
     return response
 
 
@@ -236,13 +235,13 @@ async def domain_check(domain: str = Query(..., description="Domain to check"),
                 "last_updated": last_updated,
                 "count": count
             }
+            await set_cache(cache_key, response)
         else:
             response = {
                 "exists": "False",
                 "last_updated": last_updated
             }
 
-        await set_cache(cache_key, response)
         return response
 
     except Exception as e:
@@ -279,13 +278,13 @@ async def url_check(url: str = Query(..., description="Url to check"), api_key: 
                 "last_updated": last_updated,
                 "count": count
             }
+            await set_cache(cache_key, response)
         else:
             response = {
                 "exists": "False",
                 "last_updated": last_updated
             }
 
-        await set_cache(cache_key, response)
         return response
 
     except Exception as e:

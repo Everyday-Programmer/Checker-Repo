@@ -378,13 +378,23 @@
                     <ul>
                         {% for label, url in ip_urls.items() %}
                         <li>
-                            <h3>{{ label }}</h3><h5>{{ url }}</h5>
-                                <form action="/admin/delete_url?opt=ip" method="post" style="display: inline-block;">
-                                    <input type="hidden" name="label" value="{{ label }}">
-                                    <input type="hidden" name="username" value="admin">
-                                    <input type="hidden" name="password" value="password">
-                                    <input style="cursor: pointer;" type="submit" value="Delete">
-                                </form>
+                            <h3>{{ label }}</h3><h5 id="url-{{ loop.index }}">{{ url }}</h5>
+                            <form action="/admin/delete_url?opt=ip" method="post" style="display: inline-block;">
+                                <input type="hidden" name="label" value="{{ label }}">
+                                <input type="hidden" name="username" value="admin">
+                                <input type="hidden" name="password" value="password">
+                                <input style="cursor: pointer;" type="submit" value="Delete">
+                            </form>
+                            <button onclick="toggleEditForm({{ loop.index }})">Edit</button>
+
+                            <form id="edit-form-{{ loop.index }}" action="/admin/edit_url?opt=ip" method="post" style="display: none; inline-block;">
+                                <input type="hidden" name="original_label" value="{{ label }}">
+                                <input type="hidden" name="username" value="admin">
+                                <input type="hidden" name="password" value="password">
+                                <input type="text" name="new_label" placeholder="New Label" value="{{ label }}">
+                                <input type="text" name="new_url" placeholder="New URL" value="{{ url }}">
+                                <input style="cursor: pointer;" type="submit" value="Save">
+                            </form>
                         </li>
                         {% endfor %}
                     </ul>
@@ -749,6 +759,15 @@
                     document.getElementById("copyAPI").disabled = false;
                 } catch (error) {
                     console.error('Error:', error);
+                }
+            }
+
+            function toggleEditForm(index) {
+                var form = document.getElementById('edit-form-' + index);
+                if (form.style.display === 'none') {
+                    form.style.display = 'inline-block';
+                } else {
+                    form.style.display = 'none';
                 }
             }
         </script>
