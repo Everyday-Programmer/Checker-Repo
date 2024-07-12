@@ -38,6 +38,12 @@ services:
     environment:
       MONGO_INITDB_ROOT_USERNAME: iocanalyzeradmin
       MONGO_INITDB_ROOT_PASSWORD: iocanalyzerpassword
+    deploy:
+      resources:
+        limits:
+          memory: 6G
+        reservations:
+          memory: 2G
     ports:
       - "27017:27017"
     volumes:
