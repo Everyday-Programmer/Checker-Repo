@@ -5,7 +5,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    command: ["uvicorn", "api_main:app", "--host", "0.0.0.0", "--port", "8000"]
+    command: [ "gunicorn", "api_main:app", "--workers", "4", "--worker-class", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:8000", "--timeout", "120" ]
     ports:
       - "8000:8000"
     volumes:
@@ -47,14 +47,12 @@ services:
     ports:
       - "27017:27017"
     volumes:
-      #- ./mongod.conf:/etc/mongod.conf
-      - mongo-data:/data/db
+      - ./mongo-data:/data/db
     networks:
       - mynetwork
-    #command: [ "mongod", "--replSet", "rs0", "--bind_ip_all" ]
+    # command: [ "mongod", "--replSet", "rs0", "--bind_ip_all" ]
 
 volumes:
-  mongo-data:
   utils-volume:
 
 networks:

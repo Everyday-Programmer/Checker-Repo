@@ -5,6 +5,7 @@ import re
 from datetime import datetime
 from urllib.parse import urlparse
 
+import pytz
 import requests
 from dotenv import load_dotenv
 from pymongo import MongoClient
@@ -31,11 +32,13 @@ def get_url_dict():
             url_dict[entry["source"]] = entry["url"]
     return url_dict
 
+
 def get_domain_url_dict():
     url_dict = {}
     for entry in domain_url_collection.find():
         url_dict[entry["source"]] = entry["url"]
     return url_dict
+
 
 def get_url_url_dict():
     url_dict = {}
@@ -51,10 +54,24 @@ def read_local_file(file_path):
         logging.error(f"Failed to read local file {file_path}: {e}")
         return []
 
+
+def convert_utc_to_ist(utc_time_str):
+    IST = pytz.timezone('Asia/Kolkata')
+
+    utc_time = datetime.fromisoformat(utc_time_str)
+
+    utc_time = utc_time.astimezone(pytz.utc)
+
+    ist_time = utc_time.astimezone(IST)
+
+    return ist_time
+
+
 def extract_ips_from_text(text):
     ip_pattern = r'\b(?:\d{1,3}\.){3}\d{1,3}\b|\b(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}\b'
     ips = re.findall(ip_pattern, text)
     return ips
+
 
 def fetch_and_store_ips():
     last_updated = datetime.utcnow()
@@ -108,6 +125,7 @@ def extract_domains_from_text(text):
     domains = re.findall(domain_pattern, text)
     return domains
 
+
 def fetch_and_store_domains():
     last_updated = datetime.utcnow()
     new_domains = []
@@ -150,10 +168,12 @@ def fetch_and_store_domains():
         logging.info(f"Domains updated at {last_updated}")
         cleanup_duplicate_domains()
 
+
 def extract_urls_from_text(text):
     url_pattern = r'\b(?:https?|ftp):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|]'
     urls = re.findall(url_pattern, text, re.IGNORECASE)
     return urls
+
 
 def fetch_and_store_urls():
     last_updated = datetime.utcnow()
@@ -202,6 +222,7 @@ def fetch_and_store_urls():
         logging.info(f"URLs updated at {last_updated}")
         cleanup_duplicate_urls()
 
+
 def cleanup_duplicates():
     pipeline = [
         {"$group": {
@@ -238,6 +259,7 @@ def cleanup_duplicate_domains():
         ids_to_remove = [doc["_id"] for doc in docs_to_remove]
         domain_collection.delete_many({"_id": {"$in": ids_to_remove}})
         logging.info(f"Removed {len(ids_to_remove)} duplicate(s) for domain {duplicate['_id']}")
+
 
 def cleanup_duplicate_urls():
     pipeline = [
