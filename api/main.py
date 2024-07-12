@@ -208,49 +208,88 @@ async def ip_check(ip: str = Query(..., description="IP address to check"), api_
 @app.get("/domainCheck/")
 async def domain_check(domain: str = Query(..., description="Domain to check"),
                        api_key: str = Depends(validate_api_key)):
-    try:
-        domain_doc = domain_score_collection.find_one({"domain": domain})
-        if domain_doc:
-            domain_score_collection.update_one({"domain": domain}, {"$inc": {"count": 1}})
-            count = domain_doc["count"] + 1
-        else:
-            domain_score_collection.insert_one({"domain": domain, "count": 1})
-            count = 1
+    cache_key = f"domainCheck:{domain}"
+    cached_response = await get_cache(cache_key)
 
-        result = domain_collection.find_one({"domain": domain})
-        last_updated_doc = meta_collection.find_one({"_id": "last_updated"})
+    if cached_response:
+        return cached_response
+
+    try:
+        domain_doc = await domain_score_collection.find_one_and_update(
+            {"domain": domain},
+            {"$inc": {"count": 1}},
+            return_document=True,
+            upsert=True
+        )
+
+        count = domain_doc["count"]
+
+        result = await domain_collection.find_one({"domain": domain})
+        last_updated_doc = await meta_collection.find_one({"_id": "last_updated"})
         last_updated = last_updated_doc["timestamp"] if last_updated_doc else "N/A"
+
         if result:
-            return {"exists": "True", "domain": result["domain"], "source": result["source"],
-                    "last_updated": last_updated, "count": count}
+            response = {
+                "exists": "True",
+                "domain": result["domain"],
+                "source": result["source"],
+                "last_updated": last_updated,
+                "count": count
+            }
         else:
-            return {"exists": "False", "last_updated": last_updated}
+            response = {
+                "exists": "False",
+                "last_updated": last_updated
+            }
+
+        await set_cache(cache_key, response)
+        return response
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Internal Server Error {e}")
 
 
 @app.get("/urlCheck/")
 async def url_check(url: str = Query(..., description="Url to check"), api_key: str = Depends(validate_api_key)):
-    try:
-        url_doc = url_score_collection.find_one({"url": url})
-        if url_doc:
-            url_score_collection.update_one({"url": url}, {"$inc": {"count": 1}})
-            count = url_doc["count"] + 1
-        else:
-            url_score_collection.insert_one({"url": url, "count": 1})
-            count = 1
+    cache_key = f"urlCheck:{url}"
+    cached_response = await get_cache(cache_key)
 
-        result = url_collection.find_one({"url": url})
-        last_updated_doc = meta_collection.find_one({"_id": "last_updated"})
+    if cached_response:
+        return cached_response
+
+    try:
+        url_doc = await url_score_collection.find_one_and_update(
+            {"url": url},
+            {"$inc": {"count": 1}},
+            return_document=True,
+            upsert=True
+        )
+
+        count = url_doc["count"]
+
+        result = await url_collection.find_one({"url": url})
+        last_updated_doc = await meta_collection.find_one({"_id": "last_updated"})
         last_updated = last_updated_doc["timestamp"] if last_updated_doc else "N/A"
+
         if result:
-            return {"exists": "True", "url": result["url"], "source": result["source"],
-                    "last_updated": last_updated,
-                    "count": count}
+            response = {
+                "exists": "True",
+                "url": result["url"],
+                "source": result["source"],
+                "last_updated": last_updated,
+                "count": count
+            }
         else:
-            return {"exists": "False", "last_updated": last_updated}
-    except Exception:
-        raise HTTPException(status_code=500, detail="Internal Server Error")
+            response = {
+                "exists": "False",
+                "last_updated": last_updated
+            }
+
+        await set_cache(cache_key, response)
+        return response
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal Server Error: {e}")
 
 
 @app.post("/api_generated")
