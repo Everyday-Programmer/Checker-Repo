@@ -2,6 +2,7 @@ import logging
 import os
 import threading
 
+import aioredis
 from apscheduler.schedulers.blocking import BlockingScheduler
 from dotenv import load_dotenv
 from pymongo import MongoClient
@@ -22,6 +23,12 @@ ip_url_collection = db[os.getenv('IP_URLS_COLLECTION')]
 domain_url_collection = db[os.getenv('DOMAIN_URLS_COLLECTION')]
 url_urls_collection = db[os.getenv('URL_URLS_COLLECTION')]
 settings_collection = db[os.getenv('SETTINGS_COLLECTION')]
+
+redis = aioredis.from_url("redis://localhost")
+
+
+async def reset_all_cache():
+    await redis.flushdb()
 
 
 def get_url_dict():
@@ -59,16 +66,19 @@ def listen_for_updates():
         if previous_ips != current_ips:
             logging.info("IP list changed. Fetching and storing new IPs.")
             fetch_and_store_ips()
+            reset_all_cache()
             previous_ips = current_ips
 
         if previous_domains != current_domains:
             logging.info("Domain list changed. Fetching and storing new domains.")
             fetch_and_store_domains()
+            reset_all_cache()
             previous_domains = current_domains
 
         if previous_urls != current_urls:
             logging.info("URL list changed. Fetching and storing new URLs.")
             fetch_and_store_urls()
+            reset_all_cache()
             previous_urls = current_urls
 
 

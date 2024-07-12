@@ -5,3 +5,4 @@ requests
 apscheduler
 motor
 itsdangerous
+aioredis

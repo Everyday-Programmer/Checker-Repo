@@ -1,6 +1,9 @@
 import ipaddress
+import json
 import logging
 import os
+
+import aioredis
 import httpx
 
 from dotenv import load_dotenv
@@ -51,6 +54,8 @@ ip_score_collection.create_index([("url", ASCENDING)])
 domain_score_collection.create_index([("url", ASCENDING)])
 url_score_collection.create_index([("url", ASCENDING)])
 api_key_collection.create_index([("api_key", ASCENDING), ("user_id", ASCENDING)])
+
+redis = aioredis.from_url("redis://localhost")
 
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
@@ -113,6 +118,18 @@ def validate_api_key(api_key: str = Depends(API_KEY_HEADER)):
         if result["limit"] <= result1["usage"]:
             api_key_collection.update_one({"api_key": api_key}, {"$set": {"valid": False}})
 
+
+async def get_cache(key: str):
+    cached_data = await redis.get(key)
+    if cached_data:
+        return json.loads(cached_data)
+    return None
+
+
+async def set_cache(key: str, data, expire: int = 3600):
+    await redis.set(key, json.dumps(data), ex=expire)
+
+
 def get_url_dict():
     url_dict = {}
     for entry in ip_url_collection.find():
@@ -149,24 +166,44 @@ def is_ip_in_cidr(ip: str, cidr: str) -> bool:
 
 @app.get("/ipCheck/")
 async def ip_check(ip: str = Query(..., description="IP address to check"), api_key: str = Depends(validate_api_key)):
-    ip_doc = ip_score_collection.find_one({"ip": ip})
-    if ip_doc:
-        ip_score_collection.update_one({"ip": ip}, {"$inc": {"count": 1}})
-        count = ip_doc["count"] + 1
-    else:
-        ip_score_collection.insert_one({"ip": ip, "count": 1})
-        count = 1
+    cache_key = f"ipCheck:{ip}"
+    cached_response = await get_cache(cache_key)
 
-    last_updated_doc = meta_collection.find_one({"_id": "last_updated"})
+    if cached_response:
+        return cached_response
+
+    ip_doc = await ip_score_collection.find_one_and_update(
+        {"ip": ip},
+        {"$inc": {"count": 1}},
+        return_document=True,
+        upsert=True
+    )
+
+    count = ip_doc["count"]
+
+    last_updated_doc = await meta_collection.find_one({"_id": "last_updated"})
     last_updated = last_updated_doc["timestamp"] if last_updated_doc else None
 
-    for record in collection.find():
-        cidr = record["ip"]
-        if is_ip_in_cidr(ip, cidr):
-            return {"exists": "True", "ip": ip, "source": record["source"], "last_updated": last_updated,
-                    "count": count}
+    matching_record = await collection.find_one({"ip": {"$in": [ip]}})
 
-    return {"exists": "False", "last_updated": last_updated}
+    if matching_record and is_ip_in_cidr(ip, matching_record["ip"]):
+        response = {
+            "exists": "True",
+            "ip": ip,
+            "source": matching_record["source"],
+            "last_updated": last_updated,
+            "count": count
+        }
+        await set_cache(cache_key, response)
+        return response
+
+    response = {
+        "exists": "False",
+        "last_updated": last_updated
+    }
+    await set_cache(cache_key, response)
+    return response
+
 
 @app.get("/domainCheck/")
 async def domain_check(domain: str = Query(..., description="Domain to check"),
@@ -190,6 +227,7 @@ async def domain_check(domain: str = Query(..., description="Domain to check"),
             return {"exists": "False", "last_updated": last_updated}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Internal Server Error {e}")
+
 
 @app.get("/urlCheck/")
 async def url_check(url: str = Query(..., description="Url to check"), api_key: str = Depends(validate_api_key)):
@@ -243,6 +281,7 @@ async def update_settings(settings_model: SettingsModel):
 
     return {"id": str(result.upserted_id)}
 
+
 @app.post("/update_api_settings")
 async def update_settings(api_settings_model: APISettingsModel):
     document = {
@@ -255,6 +294,7 @@ async def update_settings(api_settings_model: APISettingsModel):
     result = settings_collection.update_one({'_id': 2}, document, upsert=True)
 
     return {"id": str(result.upserted_id)}
+
 
 @app.post("/update_now")
 async def update_now():
@@ -269,12 +309,12 @@ async def update_now():
 
 @app.get("/admin", response_class=HTMLResponse)
 async def admin_page(request: Request):
-    """, credentials: HTTPBasicCredentials = Depends(security)):"""
     #authenticate(credentials)
     admin = os.getenv('ADMIN_USERNAME')
     password = os.getenv('ADMIN_PASSWORD')
 
-    if 'admin' not in request.session or 'password' not in request.session or request.session['admin'] != admin or request.session['password'] != password:
+    if 'admin' not in request.session or 'password' not in request.session or request.session['admin'] != admin or \
+            request.session['password'] != password:
         return RedirectResponse(url="/admin/login")
 
     ip_url_dict = get_url_dict()
@@ -294,7 +334,8 @@ async def admin_page(request: Request):
                                       {"request": request, "ip_urls": ip_url_dict, "domain_urls": domain_url_dict,
                                        "url_urls": url_url_dict, "last_updated": last_updated,
                                        "update_interval": update_interval, "automatic_update": automatic_update,
-                                       "api_key": api_key, "admin": admin, "password": password, "api_limit": default_api_limit})
+                                       "api_key": api_key, "admin": admin, "password": password,
+                                       "api_limit": default_api_limit})
 
 
 @app.get("/admin/login", response_class=HTMLResponse)
@@ -302,7 +343,8 @@ async def login_page(request: Request):
     admin = os.getenv('ADMIN_USERNAME')
     password = os.getenv('ADMIN_PASSWORD')
 
-    if 'admin' in request.session and 'password' in request.session and request.session['admin'] == admin and request.session['password'] == password:
+    if 'admin' in request.session and 'password' in request.session and request.session['admin'] == admin and \
+            request.session['password'] == password:
         return RedirectResponse(url="/admin")
 
     return templates.TemplateResponse("login.html", {"request": request})
@@ -318,7 +360,6 @@ async def login(request: Request, username: str = Form(...), password: str = For
 
     if admin1 != username and password1 != password:
         return RedirectResponse(url="/admin/login", status_code=302)
-
 
     request.session['admin'] = username
     request.session['password'] = password
@@ -451,4 +492,6 @@ async def api_user(request: Request):
     limit = api_doc["limit"] if api_doc else 100
     usage = api_doc["usage"] if api_doc else 0
 
-    return templates.TemplateResponse("api_user.html", {"request": request, "api_key": api_key, "limit": limit, "usage": usage, "user_id": request.session['user_id']})
+    return templates.TemplateResponse("api_user.html",
+                                      {"request": request, "api_key": api_key, "limit": limit, "usage": usage,
+                                       "user_id": request.session['user_id']})
