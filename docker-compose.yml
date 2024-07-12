@@ -5,7 +5,17 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    command: [ "gunicorn", "api_main:app", "--workers", "4", "--worker-class", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:8000", "--timeout", "120" ]
+    command: [
+      "gunicorn",
+      "api_main:app",
+      "--workers", "4",
+      "--worker-class", "uvicorn.workers.UvicornWorker",
+      "--bind", "0.0.0.0:8000",
+      "--timeout", "120",
+      "--access-logfile", "-",
+      "--error-logfile", "-",
+      "--access-logformat", '"%(h)s - - [%(t)s] "%(r)s" %(s)s %(b)s "%(f)s" "%(a)s"'
+    ]
     ports:
       - "8000:8000"
     volumes:
