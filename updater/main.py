@@ -24,7 +24,7 @@ domain_url_collection = db[os.getenv('DOMAIN_URLS_COLLECTION')]
 url_urls_collection = db[os.getenv('URL_URLS_COLLECTION')]
 settings_collection = db[os.getenv('SETTINGS_COLLECTION')]
 
-redis = aioredis.from_url("redis://localhost")
+redis = aioredis.from_url("redis://localhost:8001")
 
 
 async def reset_all_cache():

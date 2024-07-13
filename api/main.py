@@ -79,7 +79,7 @@ class APISettingsModel(BaseModel):
 
 origins = [
     "http://localhost",
-    "http://localhost:8000",
+    "http://localhost:80",
     "http://156.67.80.79.1:8000",
     "*",
 ]
@@ -126,7 +126,7 @@ async def get_cache(key: str):
     return None
 
 
-async def set_cache(key: str, data, expire: int = 3600):
+async def set_cache(key: str, data, expire: int = 86400):
     await redis.set(key, json.dumps(data), ex=expire)
 
 
@@ -167,12 +167,12 @@ def is_ip_in_cidr(ip: str, cidr: str) -> bool:
 @app.get("/ipCheck/")
 async def ip_check(ip: str = Query(..., description="IP address to check"), api_key: str = Depends(validate_api_key)):
     cache_key = f"ipCheck:{ip}"
-    cached_response = await get_cache(cache_key)
+    #cached_response = await get_cache(cache_key)
 
-    if cached_response:
-        return cached_response
+    #if cached_response:
+        #return cached_response
 
-    ip_doc = await ip_score_collection.find_one_and_update(
+    ip_doc = ip_score_collection.find_one_and_update(
         {"ip": ip},
         {"$inc": {"count": 1}},
         return_document=True,
@@ -181,10 +181,10 @@ async def ip_check(ip: str = Query(..., description="IP address to check"), api_
 
     count = ip_doc["count"]
 
-    last_updated_doc = await meta_collection.find_one({"_id": "last_updated"})
+    last_updated_doc = meta_collection.find_one({"_id": "last_updated"})
     last_updated = last_updated_doc["timestamp"] if last_updated_doc else None
 
-    matching_record = await collection.find_one({"ip": {"$in": [ip]}})
+    matching_record = collection.find_one({"ip": {"$in": [ip]}})
 
     if matching_record and is_ip_in_cidr(ip, matching_record["ip"]):
         response = {
@@ -194,7 +194,7 @@ async def ip_check(ip: str = Query(..., description="IP address to check"), api_
             "last_updated": last_updated,
             "count": count
         }
-        await set_cache(cache_key, response)
+        #await set_cache(cache_key, response)
         return response
 
     response = {
