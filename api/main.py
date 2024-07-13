@@ -79,7 +79,7 @@ class APISettingsModel(BaseModel):
 
 origins = [
     "http://localhost",
-    "http://localhost:80",
+    "http://localhost:81",
     "http://156.67.80.79.1:8000",
     "*",
 ]
