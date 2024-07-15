@@ -3,9 +3,9 @@ import ipaddress
 import logging
 import os
 
-from cachetools import TTLCache
 import httpx
 import motor.motor_asyncio
+from cachetools import TTLCache
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request, Form, HTTPException, Depends, Query, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
@@ -82,7 +82,10 @@ async def startup_event():
     await domain_score_collection.create_index([("domain", ASCENDING)])
     await url_score_collection.create_index([("url", ASCENDING)])
     await api_key_collection.create_index([("api_key", ASCENDING), ("user_id", ASCENDING)])
+    #global r
+    #r = await aioredis.from_url('redis://localhost:6379/0')
 
+#r = None
 
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
@@ -139,7 +142,7 @@ def authenticate(credentials: HTTPBasicCredentials):
 async def validate_api_key(api_key: str = Depends(API_KEY_HEADER)):
     result = await api_key_collection.find_one({"api_key": api_key})
 
-    if not result or not result.get("valid") or result.get("limit", 0) <= result.get("usage", 0) or result.get(
+    if not result or not result.get("valid") or result.get("limit", 0) <= result.get("usage", 0) and result.get(
             "user_id") != "admin":
         raise HTTPException(
             status_code=HTTP_401_UNAUTHORIZED,
@@ -149,18 +152,21 @@ async def validate_api_key(api_key: str = Depends(API_KEY_HEADER)):
     else:
         await api_key_collection.update_one({"api_key": api_key}, {"$inc": {"usage": 1}})
         result1 = await api_key_collection.find_one({"api_key": api_key})
-        if result1.get("limit", 0) <= result1.get("usage", 0):
+        if result1.get("limit", 0) <= result1.get("usage", 0) and result.get("user_id") != "admin":
             await api_key_collection.update_one({"api_key": api_key}, {"$set": {"valid": False}})
 
     return api_key
 
 
-async def get_cache(key: str):
-    return cache.get(key)
+"""async def get_cache(key: str):
+    cached_data = await r.get(key)
+    if cached_data:
+        return json.loads(cached_data)
+    return None
 
 
-def set_cache(key: str, value: dict):
-    cache[key] = value
+async def set_cache(key: str, data):
+    await r.set(key, json.dumps(data))"""
 
 
 async def get_url_dict():
@@ -202,14 +208,11 @@ def is_ip_in_cidr(ip: str, cidr: str) -> bool:
 
 @app.get("/ipCheck/")
 async def ip_check(ip: str = Query(..., description="IP address to check"), api_key: str = Depends(validate_api_key)):
-    cache_key = f"ipCheck:{ip}"
-    cached_response = await get_cache(cache_key)
+    # cache_key = f"ipCheck:{ip}"
+    # cached_response = await get_cache(cache_key)
 
-    if cached_response:
-        return {
-            "Got from": "Cache",
-            "response": cached_response
-        }
+    # if cached_response:
+        # return cached_response
 
     ip_doc = await ip_score_collection.find_one_and_update(
         {"ip": ip},
@@ -231,10 +234,9 @@ async def ip_check(ip: str = Query(..., description="IP address to check"), api_
             "ip": ip,
             "source": matching_record["source"],
             "last_updated": last_updated,
-            "count": count,
-            "Got from": "Server"
+            "count": count
         }
-        set_cache(cache_key, response)
+        # await set_cache(cache_key, response)
         return response
 
     response = {
@@ -247,11 +249,11 @@ async def ip_check(ip: str = Query(..., description="IP address to check"), api_
 @app.get("/domainCheck/")
 async def domain_check(domain: str = Query(..., description="Domain to check"),
                        api_key: str = Depends(validate_api_key)):
-    cache_key = f"domainCheck:{domain}"
-    cached_response = await get_cache(cache_key)
+    # cache_key = f"domainCheck:{domain}"
+    # cached_response = await get_cache(cache_key)
 
-    if cached_response:
-        return cached_response
+    # if cached_response:
+        # return cached_response
 
     try:
         domain_doc = await domain_score_collection.find_one_and_update(
@@ -275,7 +277,7 @@ async def domain_check(domain: str = Query(..., description="Domain to check"),
                 "last_updated": last_updated,
                 "count": count
             }
-            await set_cache(cache_key, response)
+            # await set_cache(cache_key, response)
         else:
             response = {
                 "exists": "False",
@@ -290,11 +292,11 @@ async def domain_check(domain: str = Query(..., description="Domain to check"),
 
 @app.get("/urlCheck/")
 async def url_check(url: str = Query(..., description="Url to check"), api_key: str = Depends(validate_api_key)):
-    cache_key = f"urlCheck:{url}"
-    cached_response = await get_cache(cache_key)
+    # cache_key = f"urlCheck:{url}"
+    # cached_response = await get_cache(cache_key)
 
-    if cached_response:
-        return cached_response
+    # if cached_response:
+        # return cached_response
 
     try:
         url_doc = await url_score_collection.find_one_and_update(
@@ -318,7 +320,7 @@ async def url_check(url: str = Query(..., description="Url to check"), api_key: 
                 "last_updated": last_updated,
                 "count": count
             }
-            await set_cache(cache_key, response)
+            # await set_cache(cache_key, response)
         else:
             response = {
                 "exists": "False",

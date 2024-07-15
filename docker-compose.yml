@@ -72,6 +72,12 @@ services:
       - mynetwork
     # command: [ "mongod", "--replSet", "rs0", "--bind_ip_all" ]
 
+  redis:
+    image: redis
+    container_name: redis-server
+    ports:
+      - "6379:6379"
+
   nginx:
       image: nginx:latest
       ports:

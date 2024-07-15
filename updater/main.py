@@ -5,7 +5,7 @@ import threading
 
 import motor.motor_asyncio
 from apscheduler.schedulers.blocking import BlockingScheduler
-from cachetools import TTLCache
+#from cachetools import TTLCache
 from dotenv import load_dotenv
 
 from utils import fetch_and_store_ips, fetch_and_store_domains, fetch_and_store_urls
@@ -25,13 +25,13 @@ domain_url_collection = db[os.getenv('DOMAIN_URLS_COLLECTION')]
 url_urls_collection = db[os.getenv('URL_URLS_COLLECTION')]
 settings_collection = db[os.getenv('SETTINGS_COLLECTION')]
 
-cache = TTLCache(maxsize=1000, ttl=3600)
+#cache = TTLCache(maxsize=1000, ttl=3600)
 
 asyncio.set_event_loop_policy(asyncio.DefaultEventLoopPolicy())
 
 
-def reset_all_cache():
-    cache.clear()
+#def reset_all_cache():
+    #cache.clear()
 
 
 async def get_url_dict():
@@ -71,19 +71,19 @@ async def listen_for_updates():
         if previous_ips != current_ips:
             logging.info("IP list changed. Fetching and storing new IPs.")
             await fetch_and_store_ips()
-            reset_all_cache()
+            # reset_all_cache()
             previous_ips = current_ips
 
         if previous_domains != current_domains:
             logging.info("Domain list changed. Fetching and storing new domains.")
             await fetch_and_store_domains()
-            reset_all_cache()
+            # reset_all_cache()
             previous_domains = current_domains
 
         if previous_urls != current_urls:
             logging.info("URL list changed. Fetching and storing new URLs.")
             await fetch_and_store_urls()
-            reset_all_cache()
+            # reset_all_cache()
             previous_urls = current_urls
 
 
