@@ -10,11 +10,12 @@ services:
       "api_main:app",
       "--workers", "17",
       "--worker-class", "uvicorn.workers.UvicornWorker",
-      "--bind", "0.0.0.0:8080",
+      "--bind", "0.0.0.0:81",
       "--timeout", "120",
       "--access-logfile", "-",
       "--error-logfile", "-",
-      "--access-logformat", '"%(h)s - - [%(t)s] "%(r)s" %(s)s %(b)s "%(f)s" "%(a)s"'
+      "--access-logformat", '"%(h)s - - [%(t)s] "%(r)s" %(s)s %(b)s "%(f)s" "%(a)s"',
+      "--preload"
     ]
     #ports:
       #- "8080:8000"
@@ -74,7 +75,7 @@ services:
   nginx:
       image: nginx:latest
       ports:
-        - "81:81"
+        - "8000:8000"
       volumes:
         - ./nginx.conf:/etc/nginx/nginx.conf
       depends_on:

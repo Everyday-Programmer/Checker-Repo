@@ -17,4 +17,4 @@ COPY ./templates /app/templates
 COPY utils.py /app/utils.py
 
 # Expose port for FastAPI
-EXPOSE 8080
+EXPOSE 8000

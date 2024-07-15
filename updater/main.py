@@ -1,11 +1,12 @@
+import asyncio
 import logging
 import os
 import threading
 
-import aioredis
+import motor.motor_asyncio
 from apscheduler.schedulers.blocking import BlockingScheduler
+from cachetools import TTLCache
 from dotenv import load_dotenv
-from pymongo import MongoClient
 
 from utils import fetch_and_store_ips, fetch_and_store_domains, fetch_and_store_urls
 
@@ -13,7 +14,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 
 load_dotenv()
 
-client = MongoClient(os.getenv('MONGO_DB'))
+client = motor.motor_asyncio.AsyncIOMotorClient(os.getenv('MONGO_DB'))
 db = client[os.getenv('DB')]
 collection = db[os.getenv('IP_COLLECTION')]
 domain_collection = db[os.getenv('DOMAIN_COLLECTION')]
@@ -24,72 +25,77 @@ domain_url_collection = db[os.getenv('DOMAIN_URLS_COLLECTION')]
 url_urls_collection = db[os.getenv('URL_URLS_COLLECTION')]
 settings_collection = db[os.getenv('SETTINGS_COLLECTION')]
 
-redis = aioredis.from_url("redis://localhost:8001")
+cache = TTLCache(maxsize=1000, ttl=3600)
+
+asyncio.set_event_loop_policy(asyncio.DefaultEventLoopPolicy())
 
 
-async def reset_all_cache():
-    await redis.flushdb()
+def reset_all_cache():
+    cache.clear()
 
 
-def get_url_dict():
+async def get_url_dict():
     url_dict = {}
-    for entry in ip_url_collection.find():
-        if entry["source"] != "trigger":
-            url_dict[entry["source"]] = entry["url"]
-    return url_dict
-
-
-def get_domain_url_dict():
-    url_dict = {}
-    for entry in domain_url_collection.find():
+    cursor = ip_url_collection.find()
+    async for entry in cursor:
         url_dict[entry["source"]] = entry["url"]
     return url_dict
 
 
-def get_url_url_dict():
+async def get_domain_url_dict():
     url_dict = {}
-    for entry in url_urls_collection.find():
+    cursor = domain_url_collection.find()
+    async for entry in cursor:
         url_dict[entry["source"]] = entry["url"]
     return url_dict
 
 
-def listen_for_updates():
-    previous_ips = get_url_dict()
-    previous_domains = get_domain_url_dict()
-    previous_urls = get_url_url_dict()
+async def get_url_url_dict():
+    url_dict = {}
+    cursor = url_urls_collection.find()
+    async for entry in cursor:
+        url_dict[entry["source"]] = entry["url"]
+    return url_dict
+
+
+async def listen_for_updates():
+    previous_ips = await get_url_dict()
+    previous_domains = await get_domain_url_dict()
+    previous_urls = await get_url_url_dict()
 
     while True:
-        current_ips = get_url_dict()
-        current_domains = get_domain_url_dict()
-        current_urls = get_url_url_dict()
+        current_ips = await get_url_dict()
+        current_domains = await get_domain_url_dict()
+        current_urls = await get_url_url_dict()
 
         if previous_ips != current_ips:
             logging.info("IP list changed. Fetching and storing new IPs.")
-            fetch_and_store_ips()
+            await fetch_and_store_ips()
             reset_all_cache()
             previous_ips = current_ips
 
         if previous_domains != current_domains:
             logging.info("Domain list changed. Fetching and storing new domains.")
-            fetch_and_store_domains()
+            await fetch_and_store_domains()
             reset_all_cache()
             previous_domains = current_domains
 
         if previous_urls != current_urls:
             logging.info("URL list changed. Fetching and storing new URLs.")
-            fetch_and_store_urls()
+            await fetch_and_store_urls()
             reset_all_cache()
             previous_urls = current_urls
 
 
-def listen_for_settings_updates():
+async def listen_for_settings_updates():
     global update_interval
     global automatic_update
     global scheduler
+
     previous_interval = update_interval
     previous_automatic_update = automatic_update
 
-    settings_document = settings_collection.find_one({"_id": 1})
+    settings_document = await settings_collection.find_one({"_id": 1})
     current_update_interval = settings_document["update_interval"] if settings_document else 1
     current_automatic_update = settings_document["enable_automatic_update"] if settings_document else True
 
@@ -183,17 +189,34 @@ def cleanup_duplicate_urls():
         logging.info(f"Removed {len(ids_to_remove)} duplicate(s) for URL {duplicate['_id']}")
 
 
-if __name__ == "__main__":
-    scheduler = BlockingScheduler()
-    fetch_and_store_ips()
-    fetch_and_store_domains()
-    fetch_and_store_urls()
-    settings_doc = settings_collection.find_one({"_id": 1})
+global update_interval
+global automatic_update
+global scheduler
+
+
+def run_async_loop():
+    asyncio.run(listen_for_settings_updates())
+
+
+async def initialize():
+    await fetch_and_store_ips()
+    await fetch_and_store_domains()
+    await fetch_and_store_urls()
+
+    global update_interval
+    global automatic_update
+    global scheduler
+
+    settings_doc = await settings_collection.find_one({"_id": 1})
     update_interval = settings_doc["update_interval"] if settings_doc else 1
     automatic_update = settings_doc["enable_automatic_update"] if settings_doc else True
 
-    threading.Thread(target=listen_for_updates, daemon=True).start()
+    # Start the threading part
+    #threading.Thread(target=listen_for_updates, daemon=True).start()
 
+    # Scheduler configuration
+    scheduler = BlockingScheduler()
+    # threading.Thread(target=run_async_loop, daemon=True).start()
     scheduler.add_job(listen_for_settings_updates, 'interval', seconds=10, id="listen_for_settings_updates")
 
     if automatic_update:
@@ -202,3 +225,7 @@ if __name__ == "__main__":
         scheduler.add_job(fetch_and_store_urls, 'interval', hours=update_interval, id="fetch_and_store_urls")
 
     scheduler.start()
+
+
+if __name__ == "__main__":
+    asyncio.run(initialize())

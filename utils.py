@@ -5,16 +5,16 @@ import re
 from datetime import datetime
 from urllib.parse import urlparse
 
+import motor.motor_asyncio
 import pytz
 import requests
 from dotenv import load_dotenv
-from pymongo import MongoClient
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 load_dotenv()
 
-client = MongoClient(os.getenv('MONGO_DB'))
+client = motor.motor_asyncio.AsyncIOMotorClient(os.getenv('MONGO_DB'))
 db = client[os.getenv('DB')]
 collection = db[os.getenv('IP_COLLECTION')]
 domain_collection = db[os.getenv('DOMAIN_COLLECTION')]
@@ -25,26 +25,30 @@ domain_url_collection = db[os.getenv('DOMAIN_URLS_COLLECTION')]
 url_urls_collection = db[os.getenv('URL_URLS_COLLECTION')]
 settings_collection = db[os.getenv('SETTINGS_COLLECTION')]
 
-def get_url_dict():
-    url_dict = {}
-    for entry in ip_url_collection.find():
-        if entry["source"] != "trigger":
-            url_dict[entry["source"]] = entry["url"]
-    return url_dict
 
-
-def get_domain_url_dict():
+async def get_url_dict():
     url_dict = {}
-    for entry in domain_url_collection.find():
+    cursor = ip_url_collection.find()
+    async for entry in cursor:
         url_dict[entry["source"]] = entry["url"]
     return url_dict
 
 
-def get_url_url_dict():
+async def get_domain_url_dict():
     url_dict = {}
-    for entry in url_urls_collection.find():
+    cursor = domain_url_collection.find()
+    async for entry in cursor:
         url_dict[entry["source"]] = entry["url"]
     return url_dict
+
+
+async def get_url_url_dict():
+    url_dict = {}
+    cursor = url_urls_collection.find()
+    async for entry in cursor:
+        url_dict[entry["source"]] = entry["url"]
+    return url_dict
+
 
 def read_local_file(file_path):
     try:
@@ -73,11 +77,11 @@ def extract_ips_from_text(text):
     return ips
 
 
-def fetch_and_store_ips():
+async def fetch_and_store_ips():
     last_updated = datetime.utcnow()
     new_ips = []
     seen_ips = set()
-    url_dict = get_url_dict()
+    url_dict = await get_url_dict()
 
     for label, url in url_dict.items():
         try:
@@ -109,9 +113,9 @@ def fetch_and_store_ips():
             logging.error(f"Failed to fetch IPs from {url}: {e}")
 
     if new_ips:
-        collection.delete_many({})
-        collection.insert_many(new_ips)
-        meta_collection.update_one(
+        await collection.delete_many({})
+        await collection.insert_many(new_ips)
+        await meta_collection.update_one(
             {"_id": "last_updated"},
             {"$set": {"timestamp": last_updated}},
             upsert=True
@@ -126,11 +130,11 @@ def extract_domains_from_text(text):
     return domains
 
 
-def fetch_and_store_domains():
+async def fetch_and_store_domains():
     last_updated = datetime.utcnow()
     new_domains = []
     seen_domains = set()
-    url_dict = get_domain_url_dict()
+    url_dict = await get_domain_url_dict()
 
     for label, url in url_dict.items():
         try:
@@ -158,9 +162,9 @@ def fetch_and_store_domains():
             logging.error(f"Failed to fetch domains from {url}: {e}")
 
     if new_domains:
-        domain_collection.delete_many({})
-        domain_collection.insert_many(new_domains)
-        meta_collection.update_one(
+        await domain_collection.delete_many({})
+        await domain_collection.insert_many(new_domains)
+        await meta_collection.update_one(
             {"_id": "last_updated"},
             {"$set": {"timestamp": last_updated}},
             upsert=True
@@ -175,11 +179,11 @@ def extract_urls_from_text(text):
     return urls
 
 
-def fetch_and_store_urls():
+async def fetch_and_store_urls():
     last_updated = datetime.utcnow()
     new_urls = []
     seen_urls = set()
-    url_dict = get_url_url_dict()
+    url_dict = await get_url_url_dict()
 
     for label, url in url_dict.items():
         try:
@@ -212,9 +216,9 @@ def fetch_and_store_urls():
             logging.error(f"Failed to fetch URLs from {url}: {e}")
 
     if new_urls:
-        url_collection.delete_many({})
-        url_collection.insert_many(new_urls)
-        meta_collection.update_one(
+        await url_collection.delete_many({})
+        await url_collection.insert_many(new_urls)
+        await meta_collection.update_one(
             {"_id": "last_updated"},
             {"$set": {"timestamp": last_updated}},
             upsert=True
@@ -223,7 +227,7 @@ def fetch_and_store_urls():
         cleanup_duplicate_urls()
 
 
-def cleanup_duplicates():
+async def cleanup_duplicates():
     pipeline = [
         {"$group": {
             "_id": "$ip",
@@ -233,16 +237,14 @@ def cleanup_duplicates():
         {"$match": {"count": {"$gt": 1}}}
     ]
 
-    duplicates = list(collection.aggregate(pipeline))
-
-    for duplicate in duplicates:
+    async for duplicate in collection.aggregate(pipeline):
         docs_to_remove = duplicate["docs"][1:]
         ids_to_remove = [doc["_id"] for doc in docs_to_remove]
-        collection.delete_many({"_id": {"$in": ids_to_remove}})
+        await collection.delete_many({"_id": {"$in": ids_to_remove}})
         logging.info(f"Removed {len(ids_to_remove)} duplicate(s) for IP {duplicate['_id']}")
 
 
-def cleanup_duplicate_domains():
+async def cleanup_duplicate_domains():
     pipeline = [
         {"$group": {
             "_id": "$domain",
@@ -252,16 +254,14 @@ def cleanup_duplicate_domains():
         {"$match": {"count": {"$gt": 1}}}
     ]
 
-    duplicates = list(domain_collection.aggregate(pipeline))
-
-    for duplicate in duplicates:
+    async for duplicate in domain_collection.aggregate(pipeline):
         docs_to_remove = duplicate["docs"][1:]
         ids_to_remove = [doc["_id"] for doc in docs_to_remove]
-        domain_collection.delete_many({"_id": {"$in": ids_to_remove}})
+        await domain_collection.delete_many({"_id": {"$in": ids_to_remove}})
         logging.info(f"Removed {len(ids_to_remove)} duplicate(s) for domain {duplicate['_id']}")
 
 
-def cleanup_duplicate_urls():
+async def cleanup_duplicate_urls():
     pipeline = [
         {"$group": {
             "_id": "$url",
@@ -271,10 +271,8 @@ def cleanup_duplicate_urls():
         {"$match": {"count": {"$gt": 1}}}
     ]
 
-    duplicates = list(url_collection.aggregate(pipeline))
-
-    for duplicate in duplicates:
+    async for duplicate in url_collection.aggregate(pipeline):
         docs_to_remove = duplicate["docs"][1:]
         ids_to_remove = [doc["_id"] for doc in docs_to_remove]
-        url_collection.delete_many({"_id": {"$in": ids_to_remove}})
+        await url_collection.delete_many({"_id": {"$in": ids_to_remove}})
         logging.info(f"Removed {len(ids_to_remove)} duplicate(s) for URL {duplicate['_id']}")

@@ -5,5 +5,5 @@ requests
 apscheduler
 motor
 itsdangerous
-aioredis
 gunicorn
+cachetools

@@ -1,26 +1,28 @@
+import asyncio
 import ipaddress
-import json
 import logging
 import os
 
-import aioredis
+from cachetools import TTLCache
 import httpx
-
+import motor.motor_asyncio
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request, Form, HTTPException, Depends, Query, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials, APIKeyHeader
-from starlette.middleware.sessions import SessionMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
-from pymongo import MongoClient, ASCENDING
+from pymongo import ASCENDING
+from starlette.middleware.sessions import SessionMiddleware
 from starlette.status import HTTP_401_UNAUTHORIZED
 
 from utils import fetch_and_store_ips, fetch_and_store_domains, fetch_and_store_urls
 
 load_dotenv()
+
+asyncio.set_event_loop_policy(asyncio.DefaultEventLoopPolicy())
 
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
@@ -31,31 +33,56 @@ app.add_middleware(SessionMiddleware, secret_key=os.getenv('SESSION_SECRET_KEY')
 
 API_KEY_HEADER = APIKeyHeader(name="X-API-Key")
 
-client = MongoClient(os.getenv('MONGO_DB'))
-db = client[os.getenv('DB')]
-collection = db[os.getenv('IP_COLLECTION')]
-domain_collection = db[os.getenv('DOMAIN_COLLECTION')]
-url_collection = db[os.getenv('URL_COLLECTION')]
-meta_collection = db[os.getenv('META_COLLECTION')]
-ip_url_collection = db[os.getenv('IP_URLS_COLLECTION')]
-domain_url_collection = db[os.getenv('DOMAIN_URLS_COLLECTION')]
-url_urls_collection = db[os.getenv('URL_URLS_COLLECTION')]
-api_key_collection = db[os.getenv('KEYS_COLLECTION')]
-ip_score_collection = db[os.getenv('IP_SCORES_COLLECTION')]
-domain_score_collection = db[os.getenv('DOMAIN_SCORES_COLLECTION')]
-url_score_collection = db[os.getenv('URL_SCORES_COLLECTION')]
-settings_collection = db[os.getenv('SETTINGS_COLLECTION')]
-users_collection = db[os.getenv('USERS_COLLECTION')]
+cache = TTLCache(maxsize=1000, ttl=3600)
 
-collection.create_index([("ip", ASCENDING)])
-domain_collection.create_index([("domain", ASCENDING)])
-url_collection.create_index([("url", ASCENDING)])
-ip_score_collection.create_index([("url", ASCENDING)])
-domain_score_collection.create_index([("url", ASCENDING)])
-url_score_collection.create_index([("url", ASCENDING)])
-api_key_collection.create_index([("api_key", ASCENDING), ("user_id", ASCENDING)])
+client = None
+db = None
+collection = None
+domain_collection = None
+url_collection = None
+meta_collection = None
+ip_url_collection = None
+domain_url_collection = None
+url_urls_collection = None
+api_key_collection = None
+ip_score_collection = None
+domain_score_collection = None
+url_score_collection = None
+settings_collection = None
+users_collection = None
 
-redis = aioredis.from_url("redis://localhost")
+
+@app.on_event("startup")
+async def startup_event():
+    global client, db, collection, domain_collection, url_collection
+    global meta_collection, ip_url_collection, domain_url_collection, url_urls_collection
+    global api_key_collection, ip_score_collection, domain_score_collection
+    global url_score_collection, settings_collection, users_collection
+
+    client = motor.motor_asyncio.AsyncIOMotorClient(os.getenv('MONGO_DB'))
+    db = client[os.getenv('DB')]
+    collection = db[os.getenv('IP_COLLECTION')]
+    domain_collection = db[os.getenv('DOMAIN_COLLECTION')]
+    url_collection = db[os.getenv('URL_COLLECTION')]
+    meta_collection = db[os.getenv('META_COLLECTION')]
+    ip_url_collection = db[os.getenv('IP_URLS_COLLECTION')]
+    domain_url_collection = db[os.getenv('DOMAIN_URLS_COLLECTION')]
+    url_urls_collection = db[os.getenv('URL_URLS_COLLECTION')]
+    api_key_collection = db[os.getenv('KEYS_COLLECTION')]
+    ip_score_collection = db[os.getenv('IP_SCORES_COLLECTION')]
+    domain_score_collection = db[os.getenv('DOMAIN_SCORES_COLLECTION')]
+    url_score_collection = db[os.getenv('URL_SCORES_COLLECTION')]
+    settings_collection = db[os.getenv('SETTINGS_COLLECTION')]
+    users_collection = db[os.getenv('USERS_COLLECTION')]
+
+    await collection.create_index([("ip", ASCENDING)])
+    await domain_collection.create_index([("domain", ASCENDING)])
+    await url_collection.create_index([("url", ASCENDING)])
+    await ip_score_collection.create_index([("url", ASCENDING)])
+    await domain_score_collection.create_index([("url", ASCENDING)])
+    await url_score_collection.create_index([("url", ASCENDING)])
+    await api_key_collection.create_index([("api_key", ASCENDING), ("user_id", ASCENDING)])
+
 
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
@@ -93,6 +120,11 @@ app.add_middleware(
 )
 
 
+@app.on_event("shutdown")
+async def shutdown_event():
+    client.close()
+
+
 def authenticate(credentials: HTTPBasicCredentials):
     correct_username = "admin"
     correct_password = "password"
@@ -104,49 +136,53 @@ def authenticate(credentials: HTTPBasicCredentials):
         )
 
 
-def validate_api_key(api_key: str = Depends(API_KEY_HEADER)):
-    result = api_key_collection.find_one({"api_key": api_key})
-    if not result or not result["valid"] and result["limit"] <= result["usage"] and result["user_id"] != "admin":
+async def validate_api_key(api_key: str = Depends(API_KEY_HEADER)):
+    result = await api_key_collection.find_one({"api_key": api_key})
+
+    if not result or not result.get("valid") or result.get("limit", 0) <= result.get("usage", 0) or result.get(
+            "user_id") != "admin":
         raise HTTPException(
             status_code=HTTP_401_UNAUTHORIZED,
             detail="Invalid API Key",
             headers={"WWW-Authenticate": "API key"},
         )
     else:
-        api_key_collection.update_one({"api_key": api_key}, {"$inc": {"usage": 1}})
-        result1 = api_key_collection.find_one({"api_key": api_key})
-        if result["limit"] <= result1["usage"]:
-            api_key_collection.update_one({"api_key": api_key}, {"$set": {"valid": False}})
+        await api_key_collection.update_one({"api_key": api_key}, {"$inc": {"usage": 1}})
+        result1 = await api_key_collection.find_one({"api_key": api_key})
+        if result1.get("limit", 0) <= result1.get("usage", 0):
+            await api_key_collection.update_one({"api_key": api_key}, {"$set": {"valid": False}})
+
+    return api_key
 
 
-async def get_cache(key: str):
-    cached_data = await redis.get(key)
-    if cached_data:
-        return json.loads(cached_data)
-    return None
+def get_cache(key: str):
+    return cache.get(key)
 
 
-async def set_cache(key: str, data, expire: int = 86400):
-    await redis.set(key, json.dumps(data), ex=expire)
+def set_cache(key: str, value: dict):
+    cache[key] = value
 
 
-def get_url_dict():
+async def get_url_dict():
     url_dict = {}
-    for entry in ip_url_collection.find():
+    cursor = ip_url_collection.find()
+    async for entry in cursor:
         url_dict[entry["source"]] = entry["url"]
     return url_dict
 
 
-def get_domain_url_dict():
+async def get_domain_url_dict():
     url_dict = {}
-    for entry in domain_url_collection.find():
+    cursor = domain_url_collection.find()
+    async for entry in cursor:
         url_dict[entry["source"]] = entry["url"]
     return url_dict
 
 
-def get_url_url_dict():
+async def get_url_url_dict():
     url_dict = {}
-    for entry in url_urls_collection.find():
+    cursor = url_urls_collection.find()
+    async for entry in cursor:
         url_dict[entry["source"]] = entry["url"]
     return url_dict
 
@@ -167,12 +203,12 @@ def is_ip_in_cidr(ip: str, cidr: str) -> bool:
 @app.get("/ipCheck/")
 async def ip_check(ip: str = Query(..., description="IP address to check"), api_key: str = Depends(validate_api_key)):
     cache_key = f"ipCheck:{ip}"
-    #cached_response = await get_cache(cache_key)
+    cached_response = get_cache(cache_key)
 
     #if cached_response:
         #return cached_response
 
-    ip_doc = ip_score_collection.find_one_and_update(
+    ip_doc = await ip_score_collection.find_one_and_update(
         {"ip": ip},
         {"$inc": {"count": 1}},
         return_document=True,
@@ -181,10 +217,10 @@ async def ip_check(ip: str = Query(..., description="IP address to check"), api_
 
     count = ip_doc["count"]
 
-    last_updated_doc = meta_collection.find_one({"_id": "last_updated"})
+    last_updated_doc = await meta_collection.find_one({"_id": "last_updated"})
     last_updated = last_updated_doc["timestamp"] if last_updated_doc else None
 
-    matching_record = collection.find_one({"ip": {"$in": [ip]}})
+    matching_record = await collection.find_one({"ip": {"$in": [ip]}})
 
     if matching_record and is_ip_in_cidr(ip, matching_record["ip"]):
         response = {
@@ -194,7 +230,7 @@ async def ip_check(ip: str = Query(..., description="IP address to check"), api_
             "last_updated": last_updated,
             "count": count
         }
-        #await set_cache(cache_key, response)
+        #set_cache(cache_key, response)
         return response
 
     response = {
@@ -288,7 +324,7 @@ async def url_check(url: str = Query(..., description="Url to check"), api_key: 
         return response
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Internal Server Error: {e}")
+        raise HTTPException(status_code=500, detail=f"Internal Server Error {e}")
 
 
 @app.post("/api_generated")
@@ -297,11 +333,18 @@ async def save_api_key(api_key_model: APIKeyModel):
     if not api_key:
         raise HTTPException(status_code=400, detail="API key is required")
 
-    api_settings_doc = settings_collection.find_one({"_id": 2})
+    # Await the result of the asynchronous MongoDB operations
+    api_settings_doc = await settings_collection.find_one({"_id": 2})
     default_api_limit = api_settings_doc["default_api_limit"] if api_settings_doc else 100
 
-    result = api_key_collection.insert_one({"api_key": api_key, "user_id": api_key_model.user_id,
-                                            "limit": default_api_limit, "usage": 0, "valid": True})
+    result = await api_key_collection.insert_one({
+        "api_key": api_key,
+        "user_id": api_key_model.user_id,
+        "limit": default_api_limit,
+        "usage": 0,
+        "valid": True
+    })
+
     return {"id": str(result.inserted_id)}
 
 
@@ -315,13 +358,18 @@ async def update_settings(settings_model: SettingsModel):
         }
     }
 
-    result = settings_collection.update_one({'_id': 1}, document, upsert=True)
+    result = await settings_collection.update_one({'_id': 1}, document, upsert=True)
 
-    return {"id": str(result.upserted_id)}
+    if result.upserted_id:
+        return {"id": str(result.upserted_id)}
+    elif result.modified_count > 0:
+        return {"message": "Settings updated successfully"}
+    else:
+        raise HTTPException(status_code=500, detail="No settings updated")
 
 
 @app.post("/update_api_settings")
-async def update_settings(api_settings_model: APISettingsModel):
+async def update_api_settings(api_settings_model: APISettingsModel):
     document = {
         '$set': {
             '_id': 2,
@@ -329,17 +377,20 @@ async def update_settings(api_settings_model: APISettingsModel):
         }
     }
 
-    result = settings_collection.update_one({'_id': 2}, document, upsert=True)
+    result = await settings_collection.update_one({'_id': 2}, document, upsert=True)
 
-    return {"id": str(result.upserted_id)}
+    if result.upserted_id:
+        return {"id": str(result.upserted_id)}
+    else:
+        return {"id": "Document was updated, no new document was created"}
 
 
 @app.post("/update_now")
 async def update_now():
     try:
-        fetch_and_store_ips()
-        fetch_and_store_domains()
-        fetch_and_store_urls()
+        await fetch_and_store_ips()
+        await fetch_and_store_domains()
+        await fetch_and_store_urls()
         return {"msg": "Updated request sent successfully!"}
     except:
         return {"msg": "There was an error while updating database"}
@@ -347,7 +398,6 @@ async def update_now():
 
 @app.get("/admin", response_class=HTMLResponse)
 async def admin_page(request: Request):
-    #authenticate(credentials)
     admin = os.getenv('ADMIN_USERNAME')
     password = os.getenv('ADMIN_PASSWORD')
 
@@ -355,17 +405,21 @@ async def admin_page(request: Request):
             request.session['password'] != password:
         return RedirectResponse(url="/admin/login")
 
-    ip_url_dict = get_url_dict()
-    domain_url_dict = get_domain_url_dict()
-    url_url_dict = get_url_url_dict()
-    last_updated_doc = meta_collection.find_one({"_id": "last_updated"})
+    ip_url_dict = await get_url_dict()
+    domain_url_dict = await get_domain_url_dict()
+    url_url_dict = await get_url_url_dict()
+
+    last_updated_doc = await meta_collection.find_one({"_id": "last_updated"})
     last_updated = last_updated_doc["timestamp"] if last_updated_doc else None
-    settings_doc = settings_collection.find_one({"_id": 1})
-    api_settings_doc = settings_collection.find_one({"_id": 2})
+
+    settings_doc = await settings_collection.find_one({"_id": 1})
+    api_settings_doc = await settings_collection.find_one({"_id": 2})
+
     update_interval = settings_doc["update_interval"] if settings_doc else 1
     automatic_update = settings_doc["enable_automatic_update"] if settings_doc else True
     default_api_limit = api_settings_doc["default_api_limit"] if api_settings_doc else 100
-    api_doc = api_key_collection.find_one({"user_id": "admin"})
+
+    api_doc = await api_key_collection.find_one({"user_id": "admin"})
     api_key = api_doc["api_key"] if api_doc else ""
 
     return templates.TemplateResponse("admin.html",
@@ -406,29 +460,24 @@ async def login(request: Request, username: str = Form(...), password: str = For
 
 @app.post("/admin/add_url", response_class=HTMLResponse)
 async def add_url(request: Request, label: str = Form(...), url: str = Form(...), add_to: str = Form(...)):
-    # credentials: HTTPBasicCredentials = Depends(security), add_to: str = Form(...)):
-    #authenticate(credentials)
-
     if add_to == "IP Address":
-        ip_url_collection.insert_one({"source": label, "url": url})
+        await ip_url_collection.insert_one({"source": label, "url": url})
     elif add_to == "Domain":
-        domain_url_collection.insert_one({"source": label, "url": url})
+        await domain_url_collection.insert_one({"source": label, "url": url})
     elif add_to == "URL":
-        url_urls_collection.insert_one({"source": label, "url": url})
+        await url_urls_collection.insert_one({"source": label, "url": url})
     return RedirectResponse(url="/admin?s=success", status_code=302)
 
 
 @app.post("/admin/delete_url", response_class=HTMLResponse)
 async def delete_url(request: Request, opt: str = Query(...), label: str = Form(...)):
-    #credentials: HTTPBasicCredentials = Depends(security)):
-    #authenticate(credentials)
     try:
         if opt == "ip":
-            ip_url_collection.delete_one({"source": label})
+            await ip_url_collection.delete_one({"source": label})
         elif opt == "domain":
-            domain_url_collection.delete_one({"source": label})
+            await domain_url_collection.delete_one({"source": label})
         elif opt == "url":
-            url_urls_collection.delete_one({"source": label})
+            await url_urls_collection.delete_one({"source": label})
     except Exception:
         raise HTTPException(status_code=500, detail="Internal Server Error")
     return RedirectResponse(url="/admin", status_code=302)
@@ -448,11 +497,11 @@ async def upload_file(request: Request, file: UploadFile = File(...), source: st
 
     file_url = str(request.url_for('uploaded_file', filename=file.filename))
     if upload_to == "IP Address":
-        ip_url_collection.insert_one({"source": source, "url": file_url})
+        await ip_url_collection.insert_one({"source": source, "url": file_url})
     elif upload_to == "Domain":
-        domain_url_collection.insert_one({"source": source, "url": file_url})
+        await domain_url_collection.insert_one({"source": source, "url": file_url})
     elif upload_to == "URL":
-        url_urls_collection.insert_one({"source": source, "url": file_url})
+        await url_urls_collection.insert_one({"source": source, "url": file_url})
     return RedirectResponse(url="/admin", status_code=302)
 
 
@@ -512,7 +561,7 @@ async def github_callback(request: Request, code: str = Query(...)):
                         "user_image": user_image
                     }
                 }
-                users_collection.update_one({'user_id': user_id}, user_doc, upsert=True)
+                await users_collection.update_one({'user_id': user_id}, user_doc, upsert=True)
                 return templates.TemplateResponse("welcome.html",
                                                   {"request": request, "username": username, "user_id": user_id,
                                                    "user_data": user_data})
@@ -524,12 +573,22 @@ async def github_callback(request: Request, code: str = Query(...)):
 async def api_user(request: Request):
     if 'access_token' not in request.session or 'user_id' not in request.session:
         return RedirectResponse(url="/login")
-    user_id = request.session['user_id']
-    api_doc = api_key_collection.find_one({"user_id": f"{user_id}"})
-    api_key = api_doc["api_key"] if api_doc else ""
-    limit = api_doc["limit"] if api_doc else 100
-    usage = api_doc["usage"] if api_doc else 0
 
-    return templates.TemplateResponse("api_user.html",
-                                      {"request": request, "api_key": api_key, "limit": limit, "usage": usage,
-                                       "user_id": request.session['user_id']})
+    user_id = request.session['user_id']
+
+    api_doc = await api_key_collection.find_one({"user_id": f"{user_id}"})
+
+    api_key = api_doc.get("api_key", "") if api_doc else ""
+    limit = api_doc.get("limit", 100) if api_doc else 100
+    usage = api_doc.get("usage", 0) if api_doc else 0
+
+    return templates.TemplateResponse(
+        "api_user.html",
+        {
+            "request": request,
+            "api_key": api_key,
+            "limit": limit,
+            "usage": usage,
+            "user_id": request.session['user_id']
+        }
+    )

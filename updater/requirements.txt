@@ -6,5 +6,4 @@ apscheduler
 ioc_finder
 tld
 starlette
-aioredis
 gunicorn
