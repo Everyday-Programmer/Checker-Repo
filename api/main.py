@@ -203,10 +203,13 @@ def is_ip_in_cidr(ip: str, cidr: str) -> bool:
 @app.get("/ipCheck/")
 async def ip_check(ip: str = Query(..., description="IP address to check"), api_key: str = Depends(validate_api_key)):
     cache_key = f"ipCheck:{ip}"
-    # cached_response = get_cache(cache_key)
+    cached_response = get_cache(cache_key)
 
-    #if cached_response:
-        #return cached_response
+    if cached_response:
+        return {
+            "from": "Cache",
+            "response": cached_response
+        }
 
     ip_doc = await ip_score_collection.find_one_and_update(
         {"ip": ip},
@@ -230,7 +233,7 @@ async def ip_check(ip: str = Query(..., description="IP address to check"), api_
             "last_updated": last_updated,
             "count": count
         }
-        #set_cache(cache_key, response)
+        set_cache(cache_key, response)
         return response
 
     response = {
