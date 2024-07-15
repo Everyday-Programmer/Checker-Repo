@@ -202,8 +202,8 @@ def is_ip_in_cidr(ip: str, cidr: str) -> bool:
 
 @app.get("/ipCheck/")
 async def ip_check(ip: str = Query(..., description="IP address to check"), api_key: str = Depends(validate_api_key)):
-    cache_key = f"ipCheck:{ip}"
-    cached_response = get_cache(cache_key)
+    #cache_key = f"ipCheck:{ip}"
+    #cached_response = get_cache(cache_key)
 
     #if cached_response:
         #return cached_response
