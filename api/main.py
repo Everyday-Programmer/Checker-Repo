@@ -78,8 +78,8 @@ async def startup_event():
     await collection.create_index([("ip", ASCENDING)])
     await domain_collection.create_index([("domain", ASCENDING)])
     await url_collection.create_index([("url", ASCENDING)])
-    await ip_score_collection.create_index([("url", ASCENDING)])
-    await domain_score_collection.create_index([("url", ASCENDING)])
+    await ip_score_collection.create_index([("ip", ASCENDING)])
+    await domain_score_collection.create_index([("domain", ASCENDING)])
     await url_score_collection.create_index([("url", ASCENDING)])
     await api_key_collection.create_index([("api_key", ASCENDING), ("user_id", ASCENDING)])
 
@@ -202,8 +202,8 @@ def is_ip_in_cidr(ip: str, cidr: str) -> bool:
 
 @app.get("/ipCheck/")
 async def ip_check(ip: str = Query(..., description="IP address to check"), api_key: str = Depends(validate_api_key)):
-    #cache_key = f"ipCheck:{ip}"
-    #cached_response = get_cache(cache_key)
+    cache_key = f"ipCheck:{ip}"
+    # cached_response = get_cache(cache_key)
 
     #if cached_response:
         #return cached_response
