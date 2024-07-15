@@ -155,7 +155,7 @@ async def validate_api_key(api_key: str = Depends(API_KEY_HEADER)):
     return api_key
 
 
-def get_cache(key: str):
+async def get_cache(key: str):
     return cache.get(key)
 
 
@@ -203,11 +203,11 @@ def is_ip_in_cidr(ip: str, cidr: str) -> bool:
 @app.get("/ipCheck/")
 async def ip_check(ip: str = Query(..., description="IP address to check"), api_key: str = Depends(validate_api_key)):
     cache_key = f"ipCheck:{ip}"
-    cached_response = get_cache(cache_key)
+    cached_response = await get_cache(cache_key)
 
     if cached_response:
         return {
-            "from": "Cache",
+            "Got from": "Cache",
             "response": cached_response
         }
 
@@ -231,7 +231,8 @@ async def ip_check(ip: str = Query(..., description="IP address to check"), api_
             "ip": ip,
             "source": matching_record["source"],
             "last_updated": last_updated,
-            "count": count
+            "count": count,
+            "Got from": "Server"
         }
         set_cache(cache_key, response)
         return response
