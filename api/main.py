@@ -18,6 +18,7 @@ from pymongo import ASCENDING
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.status import HTTP_401_UNAUTHORIZED
 
+from updater.main import get_md5_url_dict, get_sha256_url_dict
 from utils import fetch_and_store_ips, fetch_and_store_domains, fetch_and_store_urls
 
 load_dotenv()
@@ -40,38 +41,50 @@ db = None
 collection = None
 domain_collection = None
 url_collection = None
+md5_collection = None
+sha256_collection = None
 meta_collection = None
 ip_url_collection = None
 domain_url_collection = None
 url_urls_collection = None
+md5_url_collection = None
+sha256_url_collection = None
 api_key_collection = None
 ip_score_collection = None
 domain_score_collection = None
 url_score_collection = None
+md5_score_collection = None
+sha256_score_collection = None
 settings_collection = None
 users_collection = None
 
 
 @app.on_event("startup")
 async def startup_event():
-    global client, db, collection, domain_collection, url_collection
-    global meta_collection, ip_url_collection, domain_url_collection, url_urls_collection
-    global api_key_collection, ip_score_collection, domain_score_collection
-    global url_score_collection, settings_collection, users_collection
+    global client, db, collection, domain_collection, url_collection, md5_collection, sha256_collection
+    global meta_collection, ip_url_collection, domain_url_collection, url_urls_collection, md5_url_collection
+    global sha256_url_collection, api_key_collection, ip_score_collection, domain_score_collection
+    global url_score_collection, md5_score_collection, sha256_score_collection, settings_collection, users_collection
 
     client = motor.motor_asyncio.AsyncIOMotorClient(os.getenv('MONGO_DB'))
     db = client[os.getenv('DB')]
     collection = db[os.getenv('IP_COLLECTION')]
     domain_collection = db[os.getenv('DOMAIN_COLLECTION')]
     url_collection = db[os.getenv('URL_COLLECTION')]
+    md5_collection = db[os.getenv('MD5_COLLECTION')]
+    sha256_collection = db[os.getenv('SHA256_COLLECTION')]
     meta_collection = db[os.getenv('META_COLLECTION')]
     ip_url_collection = db[os.getenv('IP_URLS_COLLECTION')]
     domain_url_collection = db[os.getenv('DOMAIN_URLS_COLLECTION')]
     url_urls_collection = db[os.getenv('URL_URLS_COLLECTION')]
+    md5_url_collection = db[os.getenv('MD5_URL_COLLECTION')]
+    sha256_url_collection = db[os.getenv('SHA256_URL_COLLECTION')]
     api_key_collection = db[os.getenv('KEYS_COLLECTION')]
     ip_score_collection = db[os.getenv('IP_SCORES_COLLECTION')]
     domain_score_collection = db[os.getenv('DOMAIN_SCORES_COLLECTION')]
     url_score_collection = db[os.getenv('URL_SCORES_COLLECTION')]
+    md5_score_collection = db[os.getenv('MD5_SCORES_COLLECTION')]
+    sha256_score_collection = db[os.getenv('SHA256_SCORES_COLLECTION')]
     settings_collection = db[os.getenv('SETTINGS_COLLECTION')]
     users_collection = db[os.getenv('USERS_COLLECTION')]
 
@@ -333,6 +346,91 @@ async def url_check(url: str = Query(..., description="Url to check"), api_key: 
         raise HTTPException(status_code=500, detail=f"Internal Server Error {e}")
 
 
+@app.get("/md5Check/")
+async def md5_check(md5: str = Query(..., description="MD5 value to check"), api_key: str = Depends(validate_api_key)):
+    # cache_key = f"urlCheck:{url}"
+    # cached_response = await get_cache(cache_key)
+
+    # if cached_response:
+        # return cached_response
+
+    try:
+        md5_doc = await md5_score_collection.find_one_and_update(
+            {"md5": md5},
+            {"$inc": {"count": 1}},
+            return_document=True,
+            upsert=True
+        )
+
+        count = md5_doc["count"]
+
+        result = await md5_collection.find_one({"md5": md5})
+        last_updated_doc = await meta_collection.find_one({"_id": "last_updated"})
+        last_updated = last_updated_doc["timestamp"] if last_updated_doc else "N/A"
+
+        if result:
+            response = {
+                "exists": "True",
+                "md5": result["md5"],
+                "source": result["source"],
+                "last_updated": last_updated,
+                "count": count
+            }
+            # await set_cache(cache_key, response)
+        else:
+            response = {
+                "exists": "False",
+                "last_updated": last_updated
+            }
+
+        return response
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal Server Error {e}")
+
+
+@app.get("/md5Check/")
+async def md5_check(sha256: str = Query(..., description="SHA256 value to check"), api_key: str = Depends(validate_api_key)):
+    # cache_key = f"urlCheck:{url}"
+    # cached_response = await get_cache(cache_key)
+
+    # if cached_response:
+        # return cached_response
+
+    try:
+        sha256_doc = await sha256_score_collection.find_one_and_update(
+            {"sha256": sha256},
+            {"$inc": {"count": 1}},
+            return_document=True,
+            upsert=True
+        )
+
+        count = sha256_doc["count"]
+
+        result = await sha256_collection.find_one({"sha256": sha256})
+        last_updated_doc = await meta_collection.find_one({"_id": "last_updated"})
+        last_updated = last_updated_doc["timestamp"] if last_updated_doc else "N/A"
+
+        if result:
+            response = {
+                "exists": "True",
+                "sha256": result["sha256"],
+                "source": result["source"],
+                "last_updated": last_updated,
+                "count": count
+            }
+            # await set_cache(cache_key, response)
+        else:
+            response = {
+                "exists": "False",
+                "last_updated": last_updated
+            }
+
+        return response
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal Server Error {e}")
+
 @app.post("/api_generated")
 async def save_api_key(api_key_model: APIKeyModel):
     api_key = api_key_model.api_key
@@ -397,6 +495,8 @@ async def update_now():
         await fetch_and_store_ips()
         await fetch_and_store_domains()
         await fetch_and_store_urls()
+        await fetch_and_store_md5s()
+        await fetch_and_store_sha256s()
         return {"msg": "Updated request sent successfully!"}
     except:
         return {"msg": "There was an error while updating database"}
@@ -414,6 +514,8 @@ async def admin_page(request: Request):
     ip_url_dict = await get_url_dict()
     domain_url_dict = await get_domain_url_dict()
     url_url_dict = await get_url_url_dict()
+    md5_url_dict = await get_md5_url_dict()
+    sha256_url_dict = await get_sha256_url_dict()
 
     last_updated_doc = await meta_collection.find_one({"_id": "last_updated"})
     last_updated = last_updated_doc["timestamp"] if last_updated_doc else None
@@ -430,7 +532,8 @@ async def admin_page(request: Request):
 
     return templates.TemplateResponse("admin.html",
                                       {"request": request, "ip_urls": ip_url_dict, "domain_urls": domain_url_dict,
-                                       "url_urls": url_url_dict, "last_updated": last_updated,
+                                       "url_urls": url_url_dict, "md5_urls": md5_url_dict,
+                                       "sha256_urls": sha256_url_dict, "last_updated": last_updated,
                                        "update_interval": update_interval, "automatic_update": automatic_update,
                                        "api_key": api_key, "admin": admin, "password": password,
                                        "api_limit": default_api_limit})
@@ -472,18 +575,26 @@ async def add_url(request: Request, label: str = Form(...), url: str = Form(...)
         await domain_url_collection.insert_one({"source": label, "url": url})
     elif add_to == "URL":
         await url_urls_collection.insert_one({"source": label, "url": url})
+    elif add_to == "MD5":
+        await md5_url_collection.insert_one({"source": label, "url": url})
+    elif add_to == "SHA256":
+        await sha256_url_collection.insert_one({"source": label, "url": url})
     return RedirectResponse(url="/admin?s=success", status_code=302)
 
 
 @app.post("/admin/delete_url", response_class=HTMLResponse)
-async def delete_url(request: Request, opt: str = Query(...), label: str = Form(...)):
+async def delete_url(request: Request, opt: str = Query(...), label: str = Form(...), url: str = Form(...)):
     try:
         if opt == "ip":
-            await ip_url_collection.delete_one({"source": label})
+            await ip_url_collection.delete_one({"source": label, "url": url})
         elif opt == "domain":
-            await domain_url_collection.delete_one({"source": label})
+            await domain_url_collection.delete_one({"source": label, "url": url})
         elif opt == "url":
-            await url_urls_collection.delete_one({"source": label})
+            await url_urls_collection.delete_one({"source": label, "url": url})
+        elif opt == "md5":
+            await md5_url_collection.delete_one({"source": label, "url": url})
+        elif opt == "sha256":
+            await sha256_url_collection.delete_one({"source": label, "url": url})
     except Exception:
         raise HTTPException(status_code=500, detail="Internal Server Error")
     return RedirectResponse(url="/admin", status_code=302)
@@ -508,6 +619,10 @@ async def upload_file(request: Request, file: UploadFile = File(...), source: st
         await domain_url_collection.insert_one({"source": source, "url": file_url})
     elif upload_to == "URL":
         await url_urls_collection.insert_one({"source": source, "url": file_url})
+    elif upload_to == "MD5":
+        await md5_url_collection.insert_one({"source": source, "url": file_url})
+    elif upload_to == "SHA256":
+        await sha256_url_collection.insert_one({"source": source, "url": file_url})
     return RedirectResponse(url="/admin", status_code=302)
 
 

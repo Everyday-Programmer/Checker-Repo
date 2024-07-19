@@ -130,6 +130,20 @@
             padding: 1px;
             margin: 10px;
         }
+        #MD5List li {
+            background-color: #1e69e1;
+            list-style-type: none;
+            border-radius: 16px;
+            padding: 1px;
+            margin: 10px;
+        }
+        #SHA256List li {
+            background-color: #1e69e1;
+            list-style-type: none;
+            border-radius: 16px;
+            padding: 1px;
+            margin: 10px;
+        }
         #IPList h3 {
             margin: 10px 10px 6px;
         }
@@ -207,6 +221,60 @@
             font-weight: bold;
         }
         #UrlList form input[type=submit]:hover {
+            background:#f0f0f0;
+            cursor:pointer;
+            color: #fa4646;
+        }
+        #MD5List h3 {
+            margin: 10px 10px 6px;
+        }
+        #MD5List h5 {
+            margin: 0 0 6px 10px;
+        }
+        #MD5List form {
+            margin-left: 10px;
+            margin-bottom: 6px;
+        }
+        #MD5List form input[type=submit] {
+            padding:5px 15px;
+            background:#fa4646;
+            border:0 none;
+            cursor:pointer;
+            -webkit-border-radius: 5px;
+            border-radius: 5px;
+            color: #f0f0f0;
+            font-size: 14px;
+            font-family: sans-serif;
+            font-weight: bold;
+        }
+        #MD5List form input[type=submit]:hover {
+            background:#f0f0f0;
+            cursor:pointer;
+            color: #fa4646;
+        }
+        #SHA256List h3 {
+            margin: 10px 10px 6px;
+        }
+        #SHA256List form {
+            margin-left: 10px;
+            margin-bottom: 6px;
+        }
+        #SHA256List h5 {
+            margin: 0 0 6px 10px;
+        }
+        #SHA256List form input[type=submit] {
+            padding:5px 15px;
+            background:#fa4646;
+            border:0 none;
+            cursor:pointer;
+            -webkit-border-radius: 5px;
+            border-radius: 5px;
+            color: #f0f0f0;
+            font-size: 14px;
+            font-family: sans-serif;
+            font-weight: bold;
+        }
+        #SHA256List form input[type=submit]:hover {
             background:#f0f0f0;
             cursor:pointer;
             color: #fa4646;
@@ -361,6 +429,8 @@
                     <li><p style="cursor: pointer;" class="active" id="showIPList">IP List ({{ ip_urls | length }})</p></li>
                     <li><p style="cursor: pointer;" id="showDomainList">Domain List ({{ domain_urls | length }})</p></li>
                     <li><p style="cursor: pointer;" id="showUrlList">Urls List ({{ url_urls | length }})</p></li>
+                    <li><p style="cursor: pointer;" id="showMD5List">MD5 List ({{ md5_urls | length }})</p></li>
+                    <li><p style="cursor: pointer;" id="showSHA256List">SHA256 List ({{ sha256_urls | length }})</p></li>
                     <li><p style="cursor: pointer;" id="showGenerateAPI">Generate API Key</p></li>
                     <li><p style="cursor: pointer;" id="showSettings">Update Preference</p></li>
                     <li><p style="cursor: pointer;" id="showAPISettings">API Settings</p></li>
@@ -381,11 +451,12 @@
                             <h3>{{ label }}</h3><h5 id="url-{{ loop.index }}">{{ url }}</h5>
                             <form action="/admin/delete_url?opt=ip" method="post" style="display: inline-block;">
                                 <input type="hidden" name="label" value="{{ label }}">
+                                <input type="hidden" name="url" value="{{ url }}">
                                 <input type="hidden" name="username" value="admin">
                                 <input type="hidden" name="password" value="password">
                                 <input style="cursor: pointer;" type="submit" value="Delete">
                             </form>
-                            <button onclick="toggleEditForm({{ loop.index }})">Edit</button>
+                            <button onclick="toggleEditForm({{ loop.index }})" style="display: none;">Edit</button>
 
                             <form id="edit-form-{{ loop.index }}" action="/admin/edit_url?opt=ip" method="post" style="display: none; inline-block;">
                                 <input type="hidden" name="original_label" value="{{ label }}">
@@ -407,6 +478,7 @@
                             <h3>{{ label }}</h3><h5>{{ url }}</h5>
                             <form action="/admin/delete_url?opt=domain" method="post" style="display: inline-block;">
                                 <input type="hidden" name="label" value="{{ label }}">
+                                <input type="hidden" name="url" value="{{ url }}">
                                 <input type="hidden" name="username" value="admin">
                                 <input type="hidden" name="password" value="password">
                                 <input style="cursor: pointer;" type="submit" value="Delete">
@@ -423,6 +495,41 @@
                             <h3>{{ label }}</h3><h5>{{ url }}</h5>
                             <form action="/admin/delete_url?opt=url" method="post" style="display: inline-block;">
                                 <input type="hidden" name="label" value="{{ label }}">
+                                <input type="hidden" name="url" value="{{ url }}">
+                                <input type="hidden" name="username" value="admin">
+                                <input type="hidden" name="password" value="password">
+                                <input style="cursor: pointer;" type="submit" value="Delete">
+                            </form>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                <div id="MD5List" style="display: none;">
+                    <h3 style="width: 100%; text-align: center;">MD5s List</h3>
+                    <ul>
+                        {% for label, url in md5_urls.items() %}
+                        <li>
+                            <h3>{{ label }}</h3><h5>{{ url }}</h5>
+                            <form action="/admin/delete_url?opt=md5" method="post" style="display: inline-block;">
+                                <input type="hidden" name="label" value="{{ label }}">
+                                <input type="hidden" name="url" value="{{ url }}">
+                                <input type="hidden" name="username" value="admin">
+                                <input type="hidden" name="password" value="password">
+                                <input style="cursor: pointer;" type="submit" value="Delete">
+                            </form>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                <div id="SHA256List" style="display: none;">
+                    <h3 style="width: 100%; text-align: center;">SHA256s List</h3>
+                    <ul>
+                        {% for label, url in sha256_urls.items() %}
+                        <li>
+                            <h3>{{ label }}</h3><h5>{{ url }}</h5>
+                            <form action="/admin/delete_url?opt=sha256" method="post" style="display: inline-block;">
+                                <input type="hidden" name="label" value="{{ label }}">
+                                <input type="hidden" name="url" value="{{ url }}">
                                 <input type="hidden" name="username" value="admin">
                                 <input type="hidden" name="password" value="password">
                                 <input style="cursor: pointer;" type="submit" value="Delete">
@@ -490,6 +597,8 @@
                             <option value="IP Address">IP Address</option>
                             <option value="Domain">Domain</option>
                             <option value="URL">URL</option>
+                            <option value="MD5">MD5</option>
+                            <option value="SHA256">SHA256</option>
                         </select><br><br>
                         <input type="submit" value="Add URL">
                     </form>
@@ -505,6 +614,8 @@
                             <option value="IP Address">IP Address</option>
                             <option value="Domain">Domain</option>
                             <option value="URL">URL</option>
+                            <option value="MD5">MD5</option>
+                            <option value="SHA256">SHA256</option>
                         </select><br><br>
                         <input type="submit" value="Upload">
                     </form>
@@ -527,12 +638,16 @@
                 document.getElementById("IPList").style.display = "block";
                 document.getElementById("DomainList").style.display = "none";
                 document.getElementById("UrlList").style.display = "none";
+                document.getElementById("MD5List").style.display = "none";
+                document.getElementById("SHA256List").style.display = "none";
                 document.getElementById("Settings").style.display = "none";
                 document.getElementById("APIGenerate").style.display = "none";
                 document.getElementById("APISettings").style.display = "none";
                 document.getElementById("showIPList").classList.add("active");
                 document.getElementById("showDomainList").classList.remove("active");
                 document.getElementById("showUrlList").classList.remove("active");
+                document.getElementById("showSHA256List").classList.remove("active");
+                document.getElementById("showMD5List").classList.remove("active");
                 document.getElementById("showGenerateAPI").classList.remove("active");
                 document.getElementById("showSettings").classList.remove("active");
                 document.getElementById("showAPISettings").classList.remove("active");
@@ -542,12 +657,16 @@
                 document.getElementById("DomainList").style.display = "block";
                 document.getElementById("IPList").style.display = "none";
                 document.getElementById("UrlList").style.display = "none";
+                document.getElementById("MD5List").style.display = "none";
+                document.getElementById("SHA256List").style.display = "none";
                 document.getElementById("APIGenerate").style.display = "none";
                 document.getElementById("APISettings").style.display = "none";
                 document.getElementById("showDomainList").classList.add("active");
                 document.getElementById("Settings").style.display = "none";
                 document.getElementById("showIPList").classList.remove("active");
                 document.getElementById("showUrlList").classList.remove("active");
+                document.getElementById("showSHA256List").classList.remove("active");
+                document.getElementById("showMD5List").classList.remove("active");
                 document.getElementById("showGenerateAPI").classList.remove("active");
                 document.getElementById("showSettings").classList.remove("active");
                 document.getElementById("showAPISettings").classList.remove("active");
@@ -558,11 +677,15 @@
                 document.getElementById("IPList").style.display = "none";
                 document.getElementById("APIGenerate").style.display = "none";
                 document.getElementById("DomainList").style.display = "none";
+                document.getElementById("MD5List").style.display = "none";
+                document.getElementById("SHA256List").style.display = "none";
                 document.getElementById("Settings").style.display = "none";
                 document.getElementById("APISettings").style.display = "none";
                 document.getElementById("showUrlList").classList.add("active");
                 document.getElementById("showIPList").classList.remove("active");
                 document.getElementById("showDomainList").classList.remove("active");
+                document.getElementById("showSHA256List").classList.remove("active");
+                document.getElementById("showMD5List").classList.remove("active");
                 document.getElementById("showGenerateAPI").classList.remove("active");
                 document.getElementById("showSettings").classList.remove("active");
                 document.getElementById("showAPISettings").classList.remove("active");
@@ -573,12 +696,16 @@
                 document.getElementById("UrlList").style.display = "none";
                 document.getElementById("IPList").style.display = "none";
                 document.getElementById("DomainList").style.display = "none";
+                document.getElementById("MD5List").style.display = "none";
+                document.getElementById("SHA256List").style.display = "none";
                 document.getElementById("Settings").style.display = "none";
                 document.getElementById("APISettings").style.display = "none";
                 document.getElementById("showGenerateAPI").classList.add("active");
                 document.getElementById("showUrlList").classList.remove("active");
                 document.getElementById("showIPList").classList.remove("active");
                 document.getElementById("showDomainList").classList.remove("active");
+                document.getElementById("showSHA256List").classList.remove("active");
+                document.getElementById("showMD5List").classList.remove("active");
                 document.getElementById("showSettings").classList.remove("active");
                 document.getElementById("showAPISettings").classList.remove("active");
             }
@@ -588,12 +715,16 @@
                 document.getElementById("IPList").style.display = "none";
                 document.getElementById("DomainList").style.display = "none";
                 document.getElementById("UrlList").style.display = "none";
+                document.getElementById("MD5List").style.display = "none";
+                document.getElementById("SHA256List").style.display = "none";
                 document.getElementById("APIGenerate").style.display = "none";
                 document.getElementById("APISettings").style.display = "none";
                 document.getElementById("showSettings").classList.add("active");
                 document.getElementById("showIPList").classList.remove("active");
                 document.getElementById("showDomainList").classList.remove("active");
                 document.getElementById("showUrlList").classList.remove("active");
+                document.getElementById("showSHA256List").classList.remove("active");
+                document.getElementById("showMD5List").classList.remove("active");
                 document.getElementById("showGenerateAPI").classList.remove("active");
                 document.getElementById("showAPISettings").classList.remove("active");
             }
@@ -603,6 +734,8 @@
                 document.getElementById("IPList").style.display = "none";
                 document.getElementById("DomainList").style.display = "none";
                 document.getElementById("UrlList").style.display = "none";
+                document.getElementById("MD5List").style.display = "none";
+                document.getElementById("SHA256List").style.display = "none";
                 document.getElementById("APIGenerate").style.display = "none";
                 document.getElementById("Settings").style.display = "none";
                 document.getElementById("showAPISettings").classList.add("active");
@@ -610,7 +743,47 @@
                 document.getElementById("showIPList").classList.remove("active");
                 document.getElementById("showDomainList").classList.remove("active");
                 document.getElementById("showUrlList").classList.remove("active");
+                document.getElementById("showSHA256List").classList.remove("active");
+                document.getElementById("showMD5List").classList.remove("active");
                 document.getElementById("showGenerateAPI").classList.remove("active");
+            }
+
+            document.getElementById("showMD5List").onclick = function() {
+                document.getElementById("MD5List").style.display = "block";
+                document.getElementById("IPList").style.display = "none";
+                document.getElementById("DomainList").style.display = "none";
+                document.getElementById("UrlList").style.display = "none";
+                document.getElementById("APISettings").style.display = "none";
+                document.getElementById("SHA256List").style.display = "none";
+                document.getElementById("APIGenerate").style.display = "none";
+                document.getElementById("Settings").style.display = "none";
+                document.getElementById("showMD5List").classList.add("active");
+                document.getElementById("showSettings").classList.remove("active");
+                document.getElementById("showIPList").classList.remove("active");
+                document.getElementById("showDomainList").classList.remove("active");
+                document.getElementById("showUrlList").classList.remove("active");
+                document.getElementById("showSHA256List").classList.remove("active");
+                document.getElementById("showGenerateAPI").classList.remove("active");
+                document.getElementById("showAPISettings").classList.remove("active");
+            }
+
+            document.getElementById("showSHA256List").onclick = function() {
+                document.getElementById("SHA256List").style.display = "block";
+                document.getElementById("IPList").style.display = "none";
+                document.getElementById("DomainList").style.display = "none";
+                document.getElementById("UrlList").style.display = "none";
+                document.getElementById("MD5List").style.display = "none";
+                document.getElementById("APISettings").style.display = "none";
+                document.getElementById("APIGenerate").style.display = "none";
+                document.getElementById("Settings").style.display = "none";
+                document.getElementById("showSHA256List").classList.add("active");
+                document.getElementById("showSettings").classList.remove("active");
+                document.getElementById("showIPList").classList.remove("active");
+                document.getElementById("showDomainList").classList.remove("active");
+                document.getElementById("showUrlList").classList.remove("active");
+                document.getElementById("showMD5List").classList.remove("active");
+                document.getElementById("showGenerateAPI").classList.remove("active");
+                document.getElementById("showAPISettings").classList.remove("active");
             }
 
             document.getElementById("generateAPI").onclick = function() {
