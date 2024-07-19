@@ -8,7 +8,8 @@ from apscheduler.schedulers.blocking import BlockingScheduler
 #from cachetools import TTLCache
 from dotenv import load_dotenv
 
-from utils import fetch_and_store_ips, fetch_and_store_domains, fetch_and_store_urls
+from utils import fetch_and_store_ips, fetch_and_store_domains, fetch_and_store_urls, fetch_and_store_md5s, \
+    fetch_and_store_sha256s
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 

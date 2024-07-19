@@ -3,6 +3,7 @@ import logging
 import os
 import re
 from datetime import datetime
+from typing import List
 from urllib.parse import urlparse
 
 import motor.motor_asyncio
@@ -54,6 +55,22 @@ async def get_url_url_dict():
     return url_dict
 
 
+async def get_md5_url_dict():
+    url_dict = {}
+    cursor = md5_url_collection.find()
+    async for entry in cursor:
+        url_dict[entry["source"]] = entry["url"]
+    return url_dict
+
+
+async def get_sha256_url_dict():
+    url_dict = {}
+    cursor = sha256_url_collection.find()
+    async for entry in cursor:
+        url_dict[entry["source"]] = entry["url"]
+    return url_dict
+
+
 def read_local_file(file_path):
     try:
         with open(file_path, 'r') as file:
@@ -89,9 +106,9 @@ async def fetch_and_store_ips():
 
     for label, url in url_dict.items():
         try:
-            if 'localhost' in url or '127.0.0.1' in url or '156.67.80.79' in url:
+            if 'localhost' in url or '127.0.0.1' in url or '156.67.80.79' or '194.146.13.235' in url:
                 file_path = url.replace('http://localhost:8000', '').replace('http://127.0.0.1:8000', '').replace(
-                    'http://156.67.80.79:8000', '')
+                    'http://156.67.80.79:8000', '').replace('http://194.146.13.235:8000', '')
                 if file_path.startswith('/'):
                     file_path = file_path[1:]
                 ip_list = read_local_file(file_path)
@@ -142,9 +159,9 @@ async def fetch_and_store_domains():
 
     for label, url in url_dict.items():
         try:
-            if 'localhost' in url or '127.0.0.1' in url or '156.67.80.79' in url:
+            if 'localhost' in url or '127.0.0.1' in url or '156.67.80.79' or '194.146.13.235' in url:
                 file_path = url.replace('http://localhost:8000', '').replace('http://127.0.0.1:8000', '').replace(
-                    'http://156.67.80.79:8000', '')
+                    'http://156.67.80.79:8000', '').replace('http://194.146.13.235:8000', '')
                 if file_path.startswith('/'):
                     file_path = file_path[1:]
                 domain_list = read_local_file(file_path)
@@ -191,9 +208,9 @@ async def fetch_and_store_urls():
 
     for label, url in url_dict.items():
         try:
-            if 'localhost' in url or '127.0.0.1' in url or '156.67.80.79' in url:
+            if 'localhost' in url or '127.0.0.1' in url or '156.67.80.79' or '194.146.13.235' in url:
                 file_path = url.replace('http://localhost:8000', '').replace('http://127.0.0.1:8000', '').replace(
-                    'http://156.67.80.79:8000', '')
+                    'http://156.67.80.79:8000', '').replace('http://194.146.13.235:8000', '')
                 if file_path.startswith('/'):
                     file_path = file_path[1:]
                 url_list = read_local_file(file_path)
@@ -229,6 +246,94 @@ async def fetch_and_store_urls():
         )
         logging.info(f"URLs updated at {last_updated}")
         cleanup_duplicate_urls()
+
+
+def extract_md5_from_text(text: str) -> List[str]:
+    md5_pattern = re.compile(r'\b[a-fA-F0-9]{32}\b')
+    return md5_pattern.findall(text)
+
+
+async def fetch_and_store_md5s():
+    last_updated = datetime.utcnow()
+    new_md5s = []
+    seen_md5s = set()
+    url_dict = await get_md5_url_dict()
+
+    for label, url in url_dict.items():
+        try:
+            if 'localhost' in url or '127.0.0.1' in url or '156.67.80.79' or '194.146.13.235' in url:
+                file_path = url.replace('http://localhost:8000', '').replace('http://127.0.0.1:8000', '').replace(
+                    'http://156.67.80.79:8000', '').replace('http://194.146.13.235:8000', '')
+                if file_path.startswith('/'):
+                    file_path = file_path[1:]
+                md5_list = read_local_file(file_path)
+            else:
+                response = requests.get(url)
+                response.raise_for_status()
+                md5_list = extract_md5_from_text(response.text)
+
+            for md5 in md5_list:
+                if md5 not in seen_md5s:
+                    new_md5s.append({"md5": md5, "source": label})
+                    seen_md5s.add(md5)
+                else:
+                    logging.info(f"Duplicate MD5 {md5} removed from {url}")
+        except requests.RequestException as e:
+            logging.error(f"Failed to fetch MD5s from {url}: {e}")
+
+    if new_md5s:
+        await md5_collection.delete_many({})
+        await md5_collection.insert_many(new_md5s)
+        await meta_collection.update_one(
+            {"_id": "last_updated"},
+            {"$set": {"timestamp": last_updated}},
+            upsert=True
+        )
+        logging.info(f"MD5 values updated at {last_updated}")
+
+
+def extract_sha256_from_text(text: str) -> List[str]:
+    sha256_pattern = re.compile(r'\b[A-Fa-f0-9]{64}\b')
+    return sha256_pattern.findall(text)
+
+
+async def fetch_and_store_sha256s():
+    last_updated = datetime.utcnow()
+    new_sha256s = []
+    seen_sha256s = set()
+    url_dict = await get_sha256_url_dict()
+
+    for label, url in url_dict.items():
+        try:
+            if 'localhost' in url or '127.0.0.1' in url or '156.67.80.79' or '194.146.13.235' in url:
+                file_path = url.replace('http://localhost:8000', '').replace('http://127.0.0.1:8000', '').replace(
+                    'http://156.67.80.79:8000', '').replace('http://194.146.13.235:8000', '')
+                if file_path.startswith('/'):
+                    file_path = file_path[1:]
+                sha256_list = read_local_file(file_path)
+            else:
+                response = requests.get(url)
+                response.raise_for_status()
+                sha256_list = extract_sha256_from_text(response.text)
+
+            for sha256 in sha256_list:
+                if sha256 not in seen_sha256s:
+                    new_sha256s.append({"sha256": sha256, "source": label})
+                    seen_sha256s.add(sha256)
+                else:
+                    logging.info(f"Duplicate SHA256 {sha256} removed from {url}")
+        except requests.RequestException as e:
+            logging.error(f"Failed to fetch SHA256s from {url}: {e}")
+
+    if new_sha256s:
+        await sha256_collection.delete_many({})
+        await sha256_collection.insert_many(new_sha256s)
+        await meta_collection.update_one(
+            {"_id": "last_updated"},
+            {"$set": {"timestamp": last_updated}},
+            upsert=True
+        )
+        logging.info(f"SHA256 values updated at {last_updated}")
 
 
 async def cleanup_duplicates():

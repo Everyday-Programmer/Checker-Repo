@@ -19,7 +19,8 @@ from starlette.middleware.sessions import SessionMiddleware
 from starlette.status import HTTP_401_UNAUTHORIZED
 
 from updater.main import get_md5_url_dict, get_sha256_url_dict
-from utils import fetch_and_store_ips, fetch_and_store_domains, fetch_and_store_urls
+from utils import fetch_and_store_ips, fetch_and_store_domains, fetch_and_store_urls, fetch_and_store_md5s, \
+    fetch_and_store_sha256s
 
 load_dotenv()
 
@@ -97,6 +98,7 @@ async def startup_event():
     await api_key_collection.create_index([("api_key", ASCENDING), ("user_id", ASCENDING)])
     #global r
     #r = await aioredis.from_url('redis://localhost:6379/0')
+
 
 #r = None
 
@@ -206,6 +208,22 @@ async def get_url_url_dict():
     return url_dict
 
 
+async def get_md5_url_dict():
+    url_dict = {}
+    cursor = md5_url_collection.find()
+    async for entry in cursor:
+        url_dict[entry["source"]] = entry["url"]
+    return url_dict
+
+
+async def get_sha256_url_dict():
+    url_dict = {}
+    cursor = sha256_url_collection.find()
+    async for entry in cursor:
+        url_dict[entry["source"]] = entry["url"]
+    return url_dict
+
+
 @app.get("/", response_class=HTMLResponse)
 def hello():
     return "Hello World!"
@@ -225,7 +243,7 @@ async def ip_check(ip: str = Query(..., description="IP address to check"), api_
     # cached_response = await get_cache(cache_key)
 
     # if cached_response:
-        # return cached_response
+    # return cached_response
 
     ip_doc = await ip_score_collection.find_one_and_update(
         {"ip": ip},
@@ -266,7 +284,7 @@ async def domain_check(domain: str = Query(..., description="Domain to check"),
     # cached_response = await get_cache(cache_key)
 
     # if cached_response:
-        # return cached_response
+    # return cached_response
 
     try:
         domain_doc = await domain_score_collection.find_one_and_update(
@@ -309,7 +327,7 @@ async def url_check(url: str = Query(..., description="Url to check"), api_key: 
     # cached_response = await get_cache(cache_key)
 
     # if cached_response:
-        # return cached_response
+    # return cached_response
 
     try:
         url_doc = await url_score_collection.find_one_and_update(
@@ -352,7 +370,7 @@ async def md5_check(md5: str = Query(..., description="MD5 value to check"), api
     # cached_response = await get_cache(cache_key)
 
     # if cached_response:
-        # return cached_response
+    # return cached_response
 
     try:
         md5_doc = await md5_score_collection.find_one_and_update(
@@ -390,12 +408,13 @@ async def md5_check(md5: str = Query(..., description="MD5 value to check"), api
 
 
 @app.get("/md5Check/")
-async def md5_check(sha256: str = Query(..., description="SHA256 value to check"), api_key: str = Depends(validate_api_key)):
+async def md5_check(sha256: str = Query(..., description="SHA256 value to check"),
+                    api_key: str = Depends(validate_api_key)):
     # cache_key = f"urlCheck:{url}"
     # cached_response = await get_cache(cache_key)
 
     # if cached_response:
-        # return cached_response
+    # return cached_response
 
     try:
         sha256_doc = await sha256_score_collection.find_one_and_update(
@@ -430,6 +449,7 @@ async def md5_check(sha256: str = Query(..., description="SHA256 value to check"
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Internal Server Error {e}")
+
 
 @app.post("/api_generated")
 async def save_api_key(api_key_model: APIKeyModel):
