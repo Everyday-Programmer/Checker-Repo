@@ -18,7 +18,6 @@ from pymongo import ASCENDING
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.status import HTTP_401_UNAUTHORIZED
 
-from updater.main import get_md5_url_dict, get_sha256_url_dict
 from utils import fetch_and_store_ips, fetch_and_store_domains, fetch_and_store_urls, fetch_and_store_md5s, \
     fetch_and_store_sha256s
 
@@ -92,9 +91,13 @@ async def startup_event():
     await collection.create_index([("ip", ASCENDING)])
     await domain_collection.create_index([("domain", ASCENDING)])
     await url_collection.create_index([("url", ASCENDING)])
+    await md5_collection.create_index([("md5", ASCENDING)])
+    await sha256_collection.create_index([("sha256", ASCENDING)])
     await ip_score_collection.create_index([("ip", ASCENDING)])
     await domain_score_collection.create_index([("domain", ASCENDING)])
     await url_score_collection.create_index([("url", ASCENDING)])
+    await md5_score_collection.create_index([("md5", ASCENDING)])
+    await sha256_score_collection.create_index([("sha256", ASCENDING)])
     await api_key_collection.create_index([("api_key", ASCENDING), ("user_id", ASCENDING)])
     #global r
     #r = await aioredis.from_url('redis://localhost:6379/0')
@@ -407,8 +410,8 @@ async def md5_check(md5: str = Query(..., description="MD5 value to check"), api
         raise HTTPException(status_code=500, detail=f"Internal Server Error {e}")
 
 
-@app.get("/md5Check/")
-async def md5_check(sha256: str = Query(..., description="SHA256 value to check"),
+@app.get("/sha256Check/")
+async def sha256_check(sha256: str = Query(..., description="SHA256 value to check"),
                     api_key: str = Depends(validate_api_key)):
     # cache_key = f"urlCheck:{url}"
     # cached_response = await get_cache(cache_key)
@@ -591,14 +594,19 @@ async def login(request: Request, username: str = Form(...), password: str = For
 async def add_url(request: Request, label: str = Form(...), url: str = Form(...), add_to: str = Form(...)):
     if add_to == "IP Address":
         await ip_url_collection.insert_one({"source": label, "url": url})
+        await fetch_and_store_ips()
     elif add_to == "Domain":
         await domain_url_collection.insert_one({"source": label, "url": url})
+        await fetch_and_store_domains()
     elif add_to == "URL":
         await url_urls_collection.insert_one({"source": label, "url": url})
+        await fetch_and_store_urls()
     elif add_to == "MD5":
         await md5_url_collection.insert_one({"source": label, "url": url})
+        await fetch_and_store_md5s()
     elif add_to == "SHA256":
         await sha256_url_collection.insert_one({"source": label, "url": url})
+        await fetch_and_store_sha256s()
     return RedirectResponse(url="/admin?s=success", status_code=302)
 
 
@@ -607,14 +615,19 @@ async def delete_url(request: Request, opt: str = Query(...), label: str = Form(
     try:
         if opt == "ip":
             await ip_url_collection.delete_one({"source": label, "url": url})
+            await fetch_and_store_ips()
         elif opt == "domain":
             await domain_url_collection.delete_one({"source": label, "url": url})
+            await fetch_and_store_domains()
         elif opt == "url":
             await url_urls_collection.delete_one({"source": label, "url": url})
+            await fetch_and_store_urls()
         elif opt == "md5":
             await md5_url_collection.delete_one({"source": label, "url": url})
+            await fetch_and_store_md5s()
         elif opt == "sha256":
             await sha256_url_collection.delete_one({"source": label, "url": url})
+            await fetch_and_store_sha256s()
     except Exception:
         raise HTTPException(status_code=500, detail="Internal Server Error")
     return RedirectResponse(url="/admin", status_code=302)
@@ -635,14 +648,19 @@ async def upload_file(request: Request, file: UploadFile = File(...), source: st
     file_url = str(request.url_for('uploaded_file', filename=file.filename))
     if upload_to == "IP Address":
         await ip_url_collection.insert_one({"source": source, "url": file_url})
+        await fetch_and_store_ips()
     elif upload_to == "Domain":
         await domain_url_collection.insert_one({"source": source, "url": file_url})
+        await fetch_and_store_domains()
     elif upload_to == "URL":
         await url_urls_collection.insert_one({"source": source, "url": file_url})
+        await fetch_and_store_urls()
     elif upload_to == "MD5":
         await md5_url_collection.insert_one({"source": source, "url": file_url})
+        await fetch_and_store_md5s()
     elif upload_to == "SHA256":
         await sha256_url_collection.insert_one({"source": source, "url": file_url})
+        await fetch_and_store_sha256s()
     return RedirectResponse(url="/admin", status_code=302)
 
 

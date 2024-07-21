@@ -36,7 +36,7 @@ asyncio.set_event_loop_policy(asyncio.DefaultEventLoopPolicy())
 
 
 #def reset_all_cache():
-    #cache.clear()
+#cache.clear()
 
 
 async def get_url_dict():
@@ -62,12 +62,14 @@ async def get_url_url_dict():
         url_dict[entry["source"]] = entry["url"]
     return url_dict
 
+
 async def get_md5_url_dict():
     url_dict = {}
     cursor = md5_url_collection.find()
     async for entry in cursor:
         url_dict[entry["source"]] = entry["url"]
     return url_dict
+
 
 async def get_sha256_url_dict():
     url_dict = {}
@@ -77,49 +79,56 @@ async def get_sha256_url_dict():
     return url_dict
 
 
+previous_ips = None
+previous_domains = None
+previous_urls = None
+previous_md5s = None
+previous_sha256s = None
+
+
 async def listen_for_updates():
-    previous_ips = await get_url_dict()
-    previous_domains = await get_domain_url_dict()
-    previous_urls = await get_url_url_dict()
-    previous_md5s = await get_md5_url_dict()
-    previous_sha256s = await get_sha256_url_dict()
+    global previous_ips
+    global previous_domains
+    global previous_urls
+    global previous_md5s
+    global previous_sha256s
 
-    while True:
-        current_ips = await get_url_dict()
-        current_domains = await get_domain_url_dict()
-        current_urls = await get_url_url_dict()
-        current_md5s = await get_md5_url_dict()
-        current_sha256 = await get_sha256_url_dict()
+    current_ips = await get_url_dict()
+    current_domains = await get_domain_url_dict()
+    current_urls = await get_url_url_dict()
+    current_md5s = await get_md5_url_dict()
+    current_sha256 = await get_sha256_url_dict()
 
-        if previous_ips != current_ips:
-            logging.info("IP list changed. Fetching and storing new IPs.")
-            await fetch_and_store_ips()
-            # reset_all_cache()
-            previous_ips = current_ips
+    if previous_ips != current_ips:
+        logging.info("IP list changed. Fetching and storing new IPs.")
+        await fetch_and_store_ips()
+        # reset_all_cache()
+        previous_ips = current_ips
 
-        if previous_domains != current_domains:
-            logging.info("Domain list changed. Fetching and storing new domains.")
-            await fetch_and_store_domains()
-            # reset_all_cache()
-            previous_domains = current_domains
+    if previous_domains != current_domains:
+        logging.info("Domain list changed. Fetching and storing new domains.")
+        await fetch_and_store_domains()
+        # reset_all_cache()
+        # previous_domains = current_domains
 
-        if previous_urls != current_urls:
-            logging.info("URL list changed. Fetching and storing new URLs.")
-            await fetch_and_store_urls()
-            # reset_all_cache()
-            previous_urls = current_urls
+    if previous_urls != current_urls:
+        logging.info("URL list changed. Fetching and storing new URLs.")
+        await fetch_and_store_urls()
+        # reset_all_cache()
+        # previous_urls = current_urls
 
-        if previous_md5s != current_md5s:
-            logging.info("MD5 list changed. Fetching and storing new URLs.")
-            await fetch_and_store_md5s()
-            # reset_all_cache()
-            previous_urls = current_urls
+    if previous_md5s != current_md5s:
+        logging.info("MD5 list changed. Fetching and storing new URLs.")
+        await fetch_and_store_md5s()
+        # reset_all_cache()
+        previous_md5s = current_md5s
 
-        if previous_sha256s != current_sha256:
-            logging.info("SHA256 list changed. Fetching and storing new URLs.")
-            await fetch_and_store_sha256s()
-            # reset_all_cache()
-            previous_urls = current_urls
+    if previous_sha256s != current_sha256:
+        logging.info("SHA256 list changed. Fetching and storing new URLs.")
+        await fetch_and_store_sha256s()
+        # reset_all_cache()
+        previous_sha256s = current_sha256
+
 
 async def listen_for_settings_updates():
     global update_interval
@@ -248,22 +257,36 @@ async def initialize():
     await fetch_and_store_ips()
     await fetch_and_store_domains()
     await fetch_and_store_urls()
+    await fetch_and_store_md5s()
+    await fetch_and_store_sha256s()
 
     global update_interval
     global automatic_update
     global scheduler
+    global previous_ips
+    global previous_domains
+    global previous_urls
+    global previous_md5s
+    global previous_sha256s
+
+    previous_ips = await get_url_dict()
+    previous_domains = await get_domain_url_dict()
+    previous_urls = await get_url_url_dict()
+    previous_md5s = await get_md5_url_dict()
+    previous_sha256s = await get_sha256_url_dict()
 
     settings_doc = await settings_collection.find_one({"_id": 1})
     update_interval = settings_doc["update_interval"] if settings_doc else 1
     automatic_update = settings_doc["enable_automatic_update"] if settings_doc else True
 
     # Start the threading part
-    #threading.Thread(target=listen_for_updates, daemon=True).start()
+    # threading.Thread(target=listen_for_updates, daemon=True).start()
 
     # Scheduler configuration
     scheduler = BlockingScheduler()
     # threading.Thread(target=run_async_loop, daemon=True).start()
     scheduler.add_job(listen_for_settings_updates, 'interval', seconds=10, id="listen_for_settings_updates")
+    # scheduler.add_job(listen_for_updates, 'interval', seconds=10, id="listen_for_updates")
 
     if automatic_update:
         scheduler.add_job(fetch_and_store_ips, 'interval', hours=update_interval, id="fetch_and_store_ips")

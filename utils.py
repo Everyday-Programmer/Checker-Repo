@@ -106,7 +106,7 @@ async def fetch_and_store_ips():
 
     for label, url in url_dict.items():
         try:
-            if 'localhost' in url or '127.0.0.1' in url or '156.67.80.79' or '194.146.13.235' in url:
+            if 'localhost' in url or '127.0.0.1' in url or '156.67.80.79' in url or '194.146.13.235' in url:
                 file_path = url.replace('http://localhost:8000', '').replace('http://127.0.0.1:8000', '').replace(
                     'http://156.67.80.79:8000', '').replace('http://194.146.13.235:8000', '')
                 if file_path.startswith('/'):
@@ -142,7 +142,7 @@ async def fetch_and_store_ips():
             upsert=True
         )
         logging.info(f"IP addresses updated at {last_updated}")
-        cleanup_duplicates()
+        await cleanup_duplicates()
 
 
 def extract_domains_from_text(text):
@@ -159,7 +159,7 @@ async def fetch_and_store_domains():
 
     for label, url in url_dict.items():
         try:
-            if 'localhost' in url or '127.0.0.1' in url or '156.67.80.79' or '194.146.13.235' in url:
+            if 'localhost' in url or '127.0.0.1' in url or '156.67.80.79' in url or '194.146.13.235' in url:
                 file_path = url.replace('http://localhost:8000', '').replace('http://127.0.0.1:8000', '').replace(
                     'http://156.67.80.79:8000', '').replace('http://194.146.13.235:8000', '')
                 if file_path.startswith('/'):
@@ -191,7 +191,7 @@ async def fetch_and_store_domains():
             upsert=True
         )
         logging.info(f"Domains updated at {last_updated}")
-        cleanup_duplicate_domains()
+        await cleanup_duplicate_domains()
 
 
 def extract_urls_from_text(text):
@@ -208,7 +208,7 @@ async def fetch_and_store_urls():
 
     for label, url in url_dict.items():
         try:
-            if 'localhost' in url or '127.0.0.1' in url or '156.67.80.79' or '194.146.13.235' in url:
+            if 'localhost' in url or '127.0.0.1' in url or '156.67.80.79' in url or '194.146.13.235' in url:
                 file_path = url.replace('http://localhost:8000', '').replace('http://127.0.0.1:8000', '').replace(
                     'http://156.67.80.79:8000', '').replace('http://194.146.13.235:8000', '')
                 if file_path.startswith('/'):
@@ -261,16 +261,20 @@ async def fetch_and_store_md5s():
 
     for label, url in url_dict.items():
         try:
-            if 'localhost' in url or '127.0.0.1' in url or '156.67.80.79' or '194.146.13.235' in url:
+            if 'localhost' in url or '127.0.0.1' in url or '156.67.80.79' in url or '194.146.13.235' in url:
                 file_path = url.replace('http://localhost:8000', '').replace('http://127.0.0.1:8000', '').replace(
                     'http://156.67.80.79:8000', '').replace('http://194.146.13.235:8000', '')
                 if file_path.startswith('/'):
                     file_path = file_path[1:]
                 md5_list = read_local_file(file_path)
+                logging.info("IF")
             else:
                 response = requests.get(url)
+                logging.info(response)
                 response.raise_for_status()
                 md5_list = extract_md5_from_text(response.text)
+
+            logging.info(md5_list)
 
             for md5 in md5_list:
                 if md5 not in seen_md5s:
@@ -305,7 +309,7 @@ async def fetch_and_store_sha256s():
 
     for label, url in url_dict.items():
         try:
-            if 'localhost' in url or '127.0.0.1' in url or '156.67.80.79' or '194.146.13.235' in url:
+            if 'localhost' in url or '127.0.0.1' in url or '156.67.80.79' in url or '194.146.13.235' in url:
                 file_path = url.replace('http://localhost:8000', '').replace('http://127.0.0.1:8000', '').replace(
                     'http://156.67.80.79:8000', '').replace('http://194.146.13.235:8000', '')
                 if file_path.startswith('/'):
