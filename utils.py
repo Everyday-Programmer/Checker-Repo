@@ -267,14 +267,10 @@ async def fetch_and_store_md5s():
                 if file_path.startswith('/'):
                     file_path = file_path[1:]
                 md5_list = read_local_file(file_path)
-                logging.info("IF")
             else:
                 response = requests.get(url)
-                logging.info(response)
                 response.raise_for_status()
                 md5_list = extract_md5_from_text(response.text)
-
-            logging.info(md5_list)
 
             for md5 in md5_list:
                 if md5 not in seen_md5s:
