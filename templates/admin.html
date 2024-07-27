@@ -446,7 +446,7 @@
                 <div id="IPList">
                     <h3 style="width: 100%; text-align: center;">IP URLs List</h3>
                     <ul>
-                        {% for label, url in ip_urls.items() %}
+                        {% for url, label in ip_urls.items() %}
                         <li>
                             <h3>{{ label }}</h3><h5 id="url-{{ loop.index }}">{{ url }}</h5>
                             <form action="/admin/delete_url?opt=ip" method="post" style="display: inline-block;">
@@ -473,7 +473,7 @@
                 <div id="DomainList" style="display: none;">
                     <h3 style="width: 100%; text-align: center;">Domain URLs List</h3>
                     <ul>
-                        {% for label, url in domain_urls.items() %}
+                        {% for url, label in domain_urls.items() %}
                         <li>
                             <h3>{{ label }}</h3><h5>{{ url }}</h5>
                             <form action="/admin/delete_url?opt=domain" method="post" style="display: inline-block;">
@@ -490,7 +490,7 @@
                 <div id="UrlList" style="display: none;">
                     <h3 style="width: 100%; text-align: center;">URLs List</h3>
                     <ul>
-                        {% for label, url in url_urls.items() %}
+                        {% for url, label in url_urls.items() %}
                         <li>
                             <h3>{{ label }}</h3><h5>{{ url }}</h5>
                             <form action="/admin/delete_url?opt=url" method="post" style="display: inline-block;">
@@ -507,7 +507,7 @@
                 <div id="MD5List" style="display: none;">
                     <h3 style="width: 100%; text-align: center;">MD5s List</h3>
                     <ul>
-                        {% for label, url in md5_urls.items() %}
+                        {% for url, label in md5_urls.items() %}
                         <li>
                             <h3>{{ label }}</h3><h5>{{ url }}</h5>
                             <form action="/admin/delete_url?opt=md5" method="post" style="display: inline-block;">
@@ -524,7 +524,7 @@
                 <div id="SHA256List" style="display: none;">
                     <h3 style="width: 100%; text-align: center;">SHA256s List</h3>
                     <ul>
-                        {% for label, url in sha256_urls.items() %}
+                        {% for url, label in sha256_urls.items() %}
                         <li>
                             <h3>{{ label }}</h3><h5>{{ url }}</h5>
                             <form action="/admin/delete_url?opt=sha256" method="post" style="display: inline-block;">

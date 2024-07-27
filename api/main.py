@@ -7,7 +7,7 @@ import httpx
 import motor.motor_asyncio
 from cachetools import TTLCache
 from dotenv import load_dotenv
-from fastapi import FastAPI, Request, Form, HTTPException, Depends, Query, File, UploadFile
+from fastapi import FastAPI, Request, Form, HTTPException, Depends, Query, File, UploadFile, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials, APIKeyHeader
@@ -17,6 +17,7 @@ from pydantic import BaseModel
 from pymongo import ASCENDING
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.status import HTTP_401_UNAUTHORIZED
+from fastapi.testclient import TestClient
 
 from utils import fetch_and_store_ips, fetch_and_store_domains, fetch_and_store_urls, fetch_and_store_md5s, \
     fetch_and_store_sha256s
@@ -191,7 +192,7 @@ async def get_url_dict():
     url_dict = {}
     cursor = ip_url_collection.find()
     async for entry in cursor:
-        url_dict[entry["source"]] = entry["url"]
+        url_dict[entry["url"]] = entry["source"]
     return url_dict
 
 
@@ -199,7 +200,7 @@ async def get_domain_url_dict():
     url_dict = {}
     cursor = domain_url_collection.find()
     async for entry in cursor:
-        url_dict[entry["source"]] = entry["url"]
+        url_dict[entry["url"]] = entry["source"]
     return url_dict
 
 
@@ -207,7 +208,7 @@ async def get_url_url_dict():
     url_dict = {}
     cursor = url_urls_collection.find()
     async for entry in cursor:
-        url_dict[entry["source"]] = entry["url"]
+        url_dict[entry["url"]] = entry["source"]
     return url_dict
 
 
@@ -215,7 +216,7 @@ async def get_md5_url_dict():
     url_dict = {}
     cursor = md5_url_collection.find()
     async for entry in cursor:
-        url_dict[entry["source"]] = entry["url"]
+        url_dict[entry["url"]] = entry["source"]
     return url_dict
 
 
@@ -223,7 +224,7 @@ async def get_sha256_url_dict():
     url_dict = {}
     cursor = sha256_url_collection.find()
     async for entry in cursor:
-        url_dict[entry["source"]] = entry["url"]
+        url_dict[entry["url"]] = entry["source"]
     return url_dict
 
 
@@ -412,7 +413,7 @@ async def md5_check(md5: str = Query(..., description="MD5 value to check"), api
 
 @app.get("/sha256Check/")
 async def sha256_check(sha256: str = Query(..., description="SHA256 value to check"),
-                    api_key: str = Depends(validate_api_key)):
+                       api_key: str = Depends(validate_api_key)):
     # cache_key = f"urlCheck:{url}"
     # cached_response = await get_cache(cache_key)
 
@@ -590,23 +591,26 @@ async def login(request: Request, username: str = Form(...), password: str = For
     return RedirectResponse(url="/admin", status_code=302)
 
 
+client = TestClient(app)
+
 @app.post("/admin/add_url", response_class=HTMLResponse)
 async def add_url(request: Request, label: str = Form(...), url: str = Form(...), add_to: str = Form(...)):
     if add_to == "IP Address":
         await ip_url_collection.insert_one({"source": label, "url": url})
-        await fetch_and_store_ips()
+        #await asyncio.create_task(fetch_and_store_ips())
     elif add_to == "Domain":
         await domain_url_collection.insert_one({"source": label, "url": url})
-        await fetch_and_store_domains()
+        #await asyncio.create_task(fetch_and_store_domains())
     elif add_to == "URL":
         await url_urls_collection.insert_one({"source": label, "url": url})
-        await fetch_and_store_urls()
+        #await asyncio.create_task(fetch_and_store_urls())
     elif add_to == "MD5":
         await md5_url_collection.insert_one({"source": label, "url": url})
-        await fetch_and_store_md5s()
+        #await asyncio.create_task(fetch_and_store_md5s())
     elif add_to == "SHA256":
         await sha256_url_collection.insert_one({"source": label, "url": url})
-        await fetch_and_store_sha256s()
+        #await asyncio.create_task(fetch_and_store_sha256s())
+
     return RedirectResponse(url="/admin?s=success", status_code=302)
 
 
@@ -615,19 +619,19 @@ async def delete_url(request: Request, opt: str = Query(...), label: str = Form(
     try:
         if opt == "ip":
             await ip_url_collection.delete_one({"source": label, "url": url})
-            await fetch_and_store_ips()
+            #await fetch_and_store_ips()
         elif opt == "domain":
             await domain_url_collection.delete_one({"source": label, "url": url})
-            await fetch_and_store_domains()
+            #await fetch_and_store_domains()
         elif opt == "url":
             await url_urls_collection.delete_one({"source": label, "url": url})
-            await fetch_and_store_urls()
+            #await fetch_and_store_urls()
         elif opt == "md5":
             await md5_url_collection.delete_one({"source": label, "url": url})
-            await fetch_and_store_md5s()
+            #await fetch_and_store_md5s()
         elif opt == "sha256":
             await sha256_url_collection.delete_one({"source": label, "url": url})
-            await fetch_and_store_sha256s()
+            #await fetch_and_store_sha256s()
     except Exception:
         raise HTTPException(status_code=500, detail="Internal Server Error")
     return RedirectResponse(url="/admin", status_code=302)
@@ -648,19 +652,19 @@ async def upload_file(request: Request, file: UploadFile = File(...), source: st
     file_url = str(request.url_for('uploaded_file', filename=file.filename))
     if upload_to == "IP Address":
         await ip_url_collection.insert_one({"source": source, "url": file_url})
-        await fetch_and_store_ips()
+        #await fetch_and_store_ips()
     elif upload_to == "Domain":
         await domain_url_collection.insert_one({"source": source, "url": file_url})
-        await fetch_and_store_domains()
+        #await fetch_and_store_domains()
     elif upload_to == "URL":
         await url_urls_collection.insert_one({"source": source, "url": file_url})
-        await fetch_and_store_urls()
+        #await fetch_and_store_urls()
     elif upload_to == "MD5":
         await md5_url_collection.insert_one({"source": source, "url": file_url})
-        await fetch_and_store_md5s()
+        #await fetch_and_store_md5s()
     elif upload_to == "SHA256":
         await sha256_url_collection.insert_one({"source": source, "url": file_url})
-        await fetch_and_store_sha256s()
+        #await fetch_and_store_sha256s()
     return RedirectResponse(url="/admin", status_code=302)
 
 

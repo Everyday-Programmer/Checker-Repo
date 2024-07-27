@@ -35,7 +35,7 @@ async def get_url_dict():
     url_dict = {}
     cursor = ip_url_collection.find()
     async for entry in cursor:
-        url_dict[entry["source"]] = entry["url"]
+        url_dict[entry["url"]] = entry["source"]
     return url_dict
 
 
@@ -43,7 +43,7 @@ async def get_domain_url_dict():
     url_dict = {}
     cursor = domain_url_collection.find()
     async for entry in cursor:
-        url_dict[entry["source"]] = entry["url"]
+        url_dict[entry["url"]] = entry["source"]
     return url_dict
 
 
@@ -51,7 +51,7 @@ async def get_url_url_dict():
     url_dict = {}
     cursor = url_urls_collection.find()
     async for entry in cursor:
-        url_dict[entry["source"]] = entry["url"]
+        url_dict[entry["url"]] = entry["source"]
     return url_dict
 
 
@@ -59,7 +59,7 @@ async def get_md5_url_dict():
     url_dict = {}
     cursor = md5_url_collection.find()
     async for entry in cursor:
-        url_dict[entry["source"]] = entry["url"]
+        url_dict[entry["url"]] = entry["source"]
     return url_dict
 
 
@@ -67,7 +67,7 @@ async def get_sha256_url_dict():
     url_dict = {}
     cursor = sha256_url_collection.find()
     async for entry in cursor:
-        url_dict[entry["source"]] = entry["url"]
+        url_dict[entry["url"]] = entry["source"]
     return url_dict
 
 
@@ -104,11 +104,13 @@ async def fetch_and_store_ips():
     seen_ips = set()
     url_dict = await get_url_dict()
 
-    for label, url in url_dict.items():
+    for url, label in url_dict.items():
         try:
-            if 'localhost' in url or '127.0.0.1' in url or '156.67.80.79' in url or '194.146.13.235' in url:
-                file_path = url.replace('http://localhost:8000', '').replace('http://127.0.0.1:8000', '').replace(
+            if ('localhost' in url or '127.0.0.1' in url or '156.67.80.79' in url or '194.146.13.235' in url
+                    or 'https://ti.codesec.in' in url):
+                file_path = (url.replace('http://localhost:8000', '').replace('http://127.0.0.1:8000', '').replace(
                     'http://156.67.80.79:8000', '').replace('http://194.146.13.235:8000', '')
+                             .replace('https://ti.codesec.in', ''))
                 if file_path.startswith('/'):
                     file_path = file_path[1:]
                 ip_list = read_local_file(file_path)
@@ -157,11 +159,13 @@ async def fetch_and_store_domains():
     seen_domains = set()
     url_dict = await get_domain_url_dict()
 
-    for label, url in url_dict.items():
+    for url, label in url_dict.items():
         try:
-            if 'localhost' in url or '127.0.0.1' in url or '156.67.80.79' in url or '194.146.13.235' in url:
-                file_path = url.replace('http://localhost:8000', '').replace('http://127.0.0.1:8000', '').replace(
+            if ('localhost' in url or '127.0.0.1' in url or '156.67.80.79' in url or '194.146.13.235' in url
+                    or 'https://ti.codesec.in' in url):
+                file_path = (url.replace('http://localhost:8000', '').replace('http://127.0.0.1:8000', '').replace(
                     'http://156.67.80.79:8000', '').replace('http://194.146.13.235:8000', '')
+                             .replace('https://ti.codesec.in', ''))
                 if file_path.startswith('/'):
                     file_path = file_path[1:]
                 domain_list = read_local_file(file_path)
@@ -206,11 +210,13 @@ async def fetch_and_store_urls():
     seen_urls = set()
     url_dict = await get_url_url_dict()
 
-    for label, url in url_dict.items():
+    for url, label in url_dict.items():
         try:
-            if 'localhost' in url or '127.0.0.1' in url or '156.67.80.79' in url or '194.146.13.235' in url:
-                file_path = url.replace('http://localhost:8000', '').replace('http://127.0.0.1:8000', '').replace(
+            if ('localhost' in url or '127.0.0.1' in url or '156.67.80.79' in url or '194.146.13.235' in url
+                    or 'https://ti.codesec.in' in url):
+                file_path = (url.replace('http://localhost:8000', '').replace('http://127.0.0.1:8000', '').replace(
                     'http://156.67.80.79:8000', '').replace('http://194.146.13.235:8000', '')
+                             .replace('https://ti.codesec.in', ''))
                 if file_path.startswith('/'):
                     file_path = file_path[1:]
                 url_list = read_local_file(file_path)
@@ -259,11 +265,13 @@ async def fetch_and_store_md5s():
     seen_md5s = set()
     url_dict = await get_md5_url_dict()
 
-    for label, url in url_dict.items():
+    for url, label in url_dict.items():
         try:
-            if 'localhost' in url or '127.0.0.1' in url or '156.67.80.79' in url or '194.146.13.235' in url:
-                file_path = url.replace('http://localhost:8000', '').replace('http://127.0.0.1:8000', '').replace(
+            if ('localhost' in url or '127.0.0.1' in url or '156.67.80.79' in url or '194.146.13.235' in url
+                    or 'https://ti.codesec.in' in url):
+                file_path = (url.replace('http://localhost:8000', '').replace('http://127.0.0.1:8000', '').replace(
                     'http://156.67.80.79:8000', '').replace('http://194.146.13.235:8000', '')
+                             .replace('https://ti.codesec.in', ''))
                 if file_path.startswith('/'):
                     file_path = file_path[1:]
                 md5_list = read_local_file(file_path)
@@ -303,11 +311,13 @@ async def fetch_and_store_sha256s():
     seen_sha256s = set()
     url_dict = await get_sha256_url_dict()
 
-    for label, url in url_dict.items():
+    for url, label in url_dict.items():
         try:
-            if 'localhost' in url or '127.0.0.1' in url or '156.67.80.79' in url or '194.146.13.235' in url:
-                file_path = url.replace('http://localhost:8000', '').replace('http://127.0.0.1:8000', '').replace(
+            if ('localhost' in url or '127.0.0.1' in url or '156.67.80.79' in url or '194.146.13.235' in url
+                    or 'https://ti.codesec.in' in url):
+                file_path = (url.replace('http://localhost:8000', '').replace('http://127.0.0.1:8000', '').replace(
                     'http://156.67.80.79:8000', '').replace('http://194.146.13.235:8000', '')
+                             .replace('https://ti.codesec.in', ''))
                 if file_path.startswith('/'):
                     file_path = file_path[1:]
                 sha256_list = read_local_file(file_path)
