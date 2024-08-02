@@ -2,6 +2,7 @@ import asyncio
 import ipaddress
 import logging
 import os
+import re
 
 import httpx
 import motor.motor_asyncio
@@ -455,13 +456,46 @@ async def sha256_check(sha256: str = Query(..., description="SHA256 value to che
         raise HTTPException(status_code=500, detail=f"Internal Server Error {e}")
 
 
+@app.get("/iocCheck/")
+async def ioc_check(input_value: str = Query(..., description="Input value to check"),
+                    api_key: str = Depends(validate_api_key)):
+    input_type = identify_input_type(input_value)
+
+    if input_type == "ip":
+        return await ip_check(ip=input_value, api_key=api_key)
+    elif input_type == "domain":
+        return await domain_check(domain=input_value, api_key=api_key)
+    elif input_type == "url":
+        return await url_check(url=input_value, api_key=api_key)
+    elif input_type == "md5":
+        return await md5_check(md5=input_value, api_key=api_key)
+    elif input_type == "sha256":
+        return await sha256_check(sha256=input_value, api_key=api_key)
+    else:
+        raise HTTPException(status_code=400, detail="Invalid input type")
+
+
+def identify_input_type(input_value: str) -> str:
+    if re.match(r"^\d{1,3}(\.\d{1,3}){3}$", input_value):
+        return "ip"
+    elif re.match(r"^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$", input_value):
+        return "domain"
+    elif re.match(r"^(http|https)://[^\s/$.?#].[^\s]*$", input_value):
+        return "url"
+    elif re.match(r"^[a-fA-F0-9]{32}$", input_value):
+        return "md5"
+    elif re.match(r"^[a-fA-F0-9]{64}$", input_value):
+        return "sha256"
+    else:
+        raise HTTPException(status_code=400, detail="Invalid input type")
+
+
 @app.post("/api_generated")
 async def save_api_key(api_key_model: APIKeyModel):
     api_key = api_key_model.api_key
     if not api_key:
         raise HTTPException(status_code=400, detail="API key is required")
 
-    # Await the result of the asynchronous MongoDB operations
     api_settings_doc = await settings_collection.find_one({"_id": 2})
     default_api_limit = api_settings_doc["default_api_limit"] if api_settings_doc else 100
 
@@ -592,6 +626,7 @@ async def login(request: Request, username: str = Form(...), password: str = For
 
 
 client = TestClient(app)
+
 
 @app.post("/admin/add_url", response_class=HTMLResponse)
 async def add_url(request: Request, label: str = Form(...), url: str = Form(...), add_to: str = Form(...)):
