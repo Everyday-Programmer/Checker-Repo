@@ -457,20 +457,20 @@ async def sha256_check(sha256: str = Query(..., description="SHA256 value to che
 
 
 @app.get("/iocCheck/")
-async def ioc_check(input_value: str = Query(..., description="Input value to check"),
+async def ioc_check(value: str = Query(..., description="Input value to check"),
                     api_key: str = Depends(validate_api_key)):
-    input_type = identify_input_type(input_value)
+    input_type = identify_input_type(value)
 
     if input_type == "ip":
-        return await ip_check(ip=input_value, api_key=api_key)
+        return await ip_check(ip=value, api_key=api_key)
     elif input_type == "domain":
-        return await domain_check(domain=input_value, api_key=api_key)
+        return await domain_check(domain=value, api_key=api_key)
     elif input_type == "url":
-        return await url_check(url=input_value, api_key=api_key)
+        return await url_check(url=value, api_key=api_key)
     elif input_type == "md5":
-        return await md5_check(md5=input_value, api_key=api_key)
+        return await md5_check(md5=value, api_key=api_key)
     elif input_type == "sha256":
-        return await sha256_check(sha256=input_value, api_key=api_key)
+        return await sha256_check(sha256=value, api_key=api_key)
     else:
         raise HTTPException(status_code=400, detail="Invalid input type")
 
