@@ -20,7 +20,7 @@ curl -G "http://localhost:8000/ipCheck/" \
      -H "X-API-Key: your_api_key"
 ```
 ### Example Responses
-200 OK (IP found)
+200 OK (IP found in blocklist)
 ```
 {
     "exists": "True",
@@ -30,7 +30,7 @@ curl -G "http://localhost:8000/ipCheck/" \
     "count": 10
 }
 ```
-200 OK (IP not found)
+200 OK (IP not found in blocklist)
 ```
 {
     "exists": "False",
@@ -64,7 +64,7 @@ curl -G "http://localhost:8000/domainCheck/" \
      -H "X-API-Key: your_api_key"
 ```
 ### Example Responses
-200 OK (Domain found)
+200 OK (Domain found in blocklist)
 ```
 {
     "exists": "True",
@@ -74,7 +74,7 @@ curl -G "http://localhost:8000/domainCheck/" \
     "count": 5
 }
 ```
-200 OK (Domain not found)
+200 OK (Domain not found in blocklist)
 ```
 {
     "exists": "False",
@@ -108,7 +108,7 @@ curl -G "http://localhost:8000/urlCheck/" \
      -H "X-API-Key: your_api_key"
 ```
 ### Example Responses
-200 OK (URL found)
+200 OK (URL found in blocklist)
 ```
 {
     "exists": "True",
@@ -118,7 +118,7 @@ curl -G "http://localhost:8000/urlCheck/" \
     "count": 3
 }
 ```
-200 OK (URL not found)
+200 OK (URL not found in blocklist)
 ```
 {
     "exists": "False",
@@ -152,7 +152,7 @@ curl -G "http://localhost:8000/md5Check/" \
      -H "X-API-Key: your_api_key"
 ```
 ### Example Responses
-200 OK (SHA256 found)
+200 OK (MD5 found in blocklist)
 ```
 {
     "exists": "True",
@@ -162,7 +162,7 @@ curl -G "http://localhost:8000/md5Check/" \
     "count": 3
 }
 ```
-200 OK (MD5 not found)
+200 OK (MD5 not found in blocklist)
 ```
 {
     "exists": "False",
@@ -196,7 +196,7 @@ curl -G "http://localhost:8000/sha256Check/" \
      -H "X-API-Key: your_api_key"
 ```
 ### Example Responses
-200 OK (SHA256 found)
+200 OK (SHA256 found in blocklist)
 ```
 {
     "exists": "True",
@@ -206,7 +206,51 @@ curl -G "http://localhost:8000/sha256Check/" \
     "count": 3
 }
 ```
-200 OK (SHA256 not found)
+200 OK (SHA256 not found in blocklist)
+```
+{
+    "exists": "False",
+    "last_updated": "2024-07-04T12:00:00Z"
+}
+```
+401 Unauthorized
+```
+{
+  "detail": "Invalid API Key"
+}
+```
+### AIO IOC Check API
+The `iocCheck` endpoint can accept any of input (i.e ip, domain, url, md5, sha256) and then verifies if a given ip or domain or url or md5 or sha256 is present in the blocklist, indicating it as a potential Indicator of Compromise (IOC).
+Endpoint:
+```
+GET /iocCheck/
+```
+### Query Parameters
+- value (required): The value to be checked.
+### Headers
+- X-API-Key (required): The API key used for authentication.
+### Response
+- 200 OK (Found): Indicates that the given value is in blocklist, marking it as an Indicator of Compromise (IOC).
+- 200 OK (Not Found): Indicates that the value does not exist in the blocklist.
+- 401 Unauthorized: Indicates that the provided API key is missing or invalid.
+- ### Curl
+```
+curl -G "http://localhost:8000/iocCheck/" \
+     --data-urlencode "value=192.168.1.1" \
+     -H "X-API-Key: your_api_key"
+```
+### Example Responses
+200 OK (Value found in blocklist)
+```
+{
+    "exists": "True",
+    "ip": "192.168.1.1",
+    "source": "Blocklist.de",
+    "last_updated": "2024-07-04T12:00:00Z",
+    "count": 3
+}
+```
+200 OK (Value not found in blocklist)
 ```
 {
     "exists": "False",
